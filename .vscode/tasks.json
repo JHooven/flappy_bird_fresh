@@ -1,0 +1,128 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "cargo build stm32f429ZI_display_rust_2",
+			"type": "shell",
+			"command": "cargo build",
+			"group": "build"
+		},
+		{
+			"label": "build: debug (stm32f429ZI_display_rust_2)",
+			"type": "shell",
+			"command": "cargo build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			]
+		},
+		{
+			"label": "openocd: stm32f429zi (stlink)",
+			"type": "shell",
+			"command": "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg",
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "openocd",
+				"pattern": {
+					"regexp": ".*",
+					"file": 1,
+					"line": 1,
+					"column": 1,
+					"message": 0
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Info :\\s+clock speed\\s+.*",
+					"endsPattern": "Info :\\s+listening on port 3333 for gdb connections"
+				}
+			}
+		},
+		{
+			"label": "openocd: stop",
+			"type": "shell",
+			"command": "pkill -f '^openocd .*stm32f4x\\.cfg' || true"
+		},
+		{
+			"label": "openocd: erase flash (stm32f429zi)",
+			"type": "shell",
+			"command": "openocd",
+			"args": [
+				"-f",
+				"interface/stlink.cfg",
+				"-f",
+				"target/stm32f4x.cfg",
+				"-c",
+				"init; halt; flash erase_address 0x08000000 0x200000; shutdown"
+			]
+		},
+		{
+			"label": "flash: clean build + erase",
+			"type": "shell",
+			"command": "echo Clean erase done",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"build: debug (stm32f429ZI_display_rust_2)",
+				"openocd: erase flash (stm32f429zi)"
+			]
+		},
+		{
+			"label": "build: debug (stm32f429ZI_display_rust_2)",
+			"type": "shell",
+			"command": "cargo build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build: overlay (fps on L1)",
+			"type": "shell",
+			"command": "cargo build --features overlay",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build: max-speed (l2-immediate)",
+			"type": "shell",
+			"command": "cargo build --features l2-immediate",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build: static-test (default pclk-div-8)",
+			"type": "shell",
+			"command": "cargo build --features static-test",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "flash: overlay build + erase",
+			"type": "shell",
+			"command": "echo Flash overlay done",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"build: overlay (fps on L1)",
+				"openocd: erase flash (stm32f429zi)"
+			]
+		},
+		{
+			"label": "Create binary file",
+			"type": "shell",
+			"command": "arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/debug/flappy_bird_fresh target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin"
+		},
+		{
+			"label": "Flash tilt square program",
+			"type": "shell",
+			"command": "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c \"init; halt; flash write_image erase target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; verify_image target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; reset run; shutdown\""
+		}
+	]
+}

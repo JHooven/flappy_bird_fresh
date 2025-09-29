@@ -1,0 +1,44 @@
+[package]
+
+name = "flappy_bird_fresh"
+version = "0.1.0"
+edition = "2021"
+authors = ["John Hooven <john@johnhooven.com>"]
+description = "An awesome embedded Rust project"
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = { version = "0.7", features = ["device"] }
+panic-halt = "0.2"
+stm32f4 = { version = "0.15", features = ["stm32f429", "rt"] }
+
+[features]
+default = []
+# Enable a static display mode that disables animation/overlay for LTDC timing tests
+static-test = []
+# Optional FPS overlay on Layer 1 (not in C demo)
+overlay = []
+# Optional: update Layer 2 position with immediate reload instead of VBlank (may tear)
+l2-immediate = []
+# Make Layer 2 fully opaque (ignore per-pixel alpha)
+l2-opaque = []
+# Switch LTDC pixel clock polarity to falling edge (default is rising)
+pcpol-falling = []
+
+# Optional LTDC signal polarity overrides (set at most one of each pair)
+hsync-high = []
+hsync-low = []
+vsync-high = []
+vsync-low = []
+de-high = []
+de-low = []
+
+# LTDC pixel clock divider options (DIVR). Default is 8 if none specified.
+pclk-div-2 = []
+pclk-div-4 = []
+pclk-div-16 = []
+locm3-timings = []
+
+# Diagnostic: drive Layer 1 at 16bpp (RGB565) instead of 32bpp ARGB8888
+l1-16bpp = []
+
