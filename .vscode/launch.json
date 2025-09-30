@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Cortex-Debug: Clean flash + Launch",
+      "name": "OpenOCD: Flash + Debug (flappy_bird_fresh)",
       "type": "cortex-debug",
       "request": "launch",
       "cwd": "${workspaceFolder}",
@@ -14,19 +14,21 @@
         "target/stm32f4x.cfg"
       ],
       "serverArgs": ["-c", "adapter speed 4000"],
-      "preLaunchTask": "flash: clean build + erase",
+      "preLaunchTask": "openocd: erase + flash binary (flappy_bird_fresh)",
       "gdbPath": "arm-none-eabi-gdb",
       "preLaunchCommands": [
-        "load"
+        "set mem inaccessible-by-default off",
+        "set remotetimeout 60"
       ],
       "postLaunchCommands": [
-        "monitor reset halt"
+        "monitor reset halt",
+        "load"
       ]
     },
     {
-      "name": "Cortex-Debug: OpenOCD (ST-Link)",
+      "name": "OpenOCD: Debug Only (no flash)",
       "type": "cortex-debug",
-      "request": "launch",
+      "request": "launch", 
       "cwd": "${workspaceFolder}",
       "executable": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/flappy_bird_fresh",
       "servertype": "openocd",
@@ -34,32 +36,31 @@
         "interface/stlink.cfg",
         "target/stm32f4x.cfg"
       ],
-      // Optional: increase if you see connection issues
       "serverArgs": ["-c", "adapter speed 4000"],
-  // We will reset+halt via postLaunchCommands
       "preLaunchTask": "build: debug (flappy_bird_fresh)",
-  "gdbPath": "arm-none-eabi-gdb",
-      // Helpful, but optional. Uncomment if you have the SVD path.
-      // "svdFile": "${workspaceFolder}/stm32f429.svd",
-      // Reset and halt at entry to let you set breakpoints
+      "gdbPath": "arm-none-eabi-gdb",
       "preLaunchCommands": [
-        "load"
+        "set mem inaccessible-by-default off",
+        "set remotetimeout 60"
       ],
       "postLaunchCommands": [
         "monitor reset halt"
       ]
     },
     {
-      "name": "Attach: OpenOCD GDB (port 3333)",
+      "name": "OpenOCD: Attach to Running Session",
       "type": "cortex-debug",
       "request": "attach",
       "cwd": "${workspaceFolder}",
       "executable": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/flappy_bird_fresh",
-      "servertype": "openocd",
-      "device": "STM32F429ZI",
+      "servertype": "external",
       "gdbTarget": "localhost:3333",
-      "preLaunchTask": "openocd: stm32f429zi (stlink)",
-      "postDebugTask": "openocd: stop"
+      "gdbPath": "arm-none-eabi-gdb",
+      "postAttachCommands": [
+        "set mem inaccessible-by-default off",
+        "set remotetimeout 60",
+        "monitor halt"
+      ]
     }
   ]
 }

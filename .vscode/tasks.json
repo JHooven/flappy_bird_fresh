@@ -123,6 +123,91 @@
 			"label": "Flash tilt square program",
 			"type": "shell",
 			"command": "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c \"init; halt; flash write_image erase target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; verify_image target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; reset run; shutdown\""
+		},
+		{
+			"label": "build: debug (flappy_bird_fresh)",
+			"type": "shell",
+			"command": "cargo build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			]
+		},
+		{
+			"label": "openocd: start server (flappy_bird_fresh)",
+			"type": "shell",
+			"command": "openocd",
+			"args": [
+				"-f", "interface/stlink.cfg", 
+				"-f", "target/stm32f4x.cfg",
+				"-c", "adapter speed 4000"
+			],
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "openocd",
+				"pattern": {
+					"regexp": ".*",
+					"file": 1,
+					"line": 1,
+					"column": 1,
+					"message": 0
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Info :\\s+.*",
+					"endsPattern": "Info :\\s+Listening on port 3333 for gdb connections"
+				}
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			}
+		},
+		{
+			"label": "openocd: build + create binary",
+			"type": "shell",
+			"command": "arm-none-eabi-objcopy",
+			"args": [
+				"-O", "binary", 
+				"target/thumbv7em-none-eabihf/debug/flappy_bird_fresh",
+				"target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin"
+			],
+			"dependsOn": "build: debug (flappy_bird_fresh)",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "openocd: flash binary (flappy_bird_fresh)",
+			"type": "shell",
+			"command": "openocd",
+			"args": [
+				"-f", "interface/stlink.cfg",
+				"-f", "target/stm32f4x.cfg", 
+				"-c", "init; halt; flash write_image erase target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; verify_image target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; reset run; shutdown"
+			],
+			"dependsOn": "openocd: build + create binary",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "openocd: erase + flash binary (flappy_bird_fresh)",
+			"type": "shell", 
+			"command": "openocd",
+			"args": [
+				"-f", "interface/stlink.cfg",
+				"-f", "target/stm32f4x.cfg",
+				"-c", "init; halt; flash erase_address 0x08000000 0x200000; flash write_image erase target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; verify_image target/thumbv7em-none-eabihf/debug/flappy_bird_fresh.bin 0x08000000; reset run; shutdown"
+			],
+			"dependsOn": "openocd: build + create binary",
+			"group": "build", 
+			"problemMatcher": []
 		}
 	]
 }
