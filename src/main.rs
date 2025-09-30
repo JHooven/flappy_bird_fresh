@@ -79,10 +79,10 @@ fn main() -> ! {
             square_y = square_y.max(0).min(max_y);
         }
         
-        // Update square position on screen
-        lcd::set_layer2_position(square_x as u32, square_y as u32);
+        // Wait for VSync before updating position to prevent screen tearing
+        lcd::wait_for_vsync();
         
-        // Minimal delay for maximum responsiveness
-        clock::delay_ms(1);
+        // Update square position on screen (synchronized to vertical blanking)
+        lcd::set_layer2_position(square_x as u32, square_y as u32);
     }
 }

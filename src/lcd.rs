@@ -309,6 +309,23 @@ fn setup_ltdc_gpio() {
     set_af(pa, 4, 14);
 }
 
+// VSync synchronization for smooth rendering
+pub fn wait_for_vsync() {
+    let dp = unsafe { pac::Peripherals::steal() };
+    let ltdc = dp.LTDC;
+    
+    // Wait for the start of vertical blanking period
+    // This ensures position updates happen between frames, not during active display
+    while ltdc.cdsr.read().vsyncs().bit_is_clear() {
+        // Busy wait for VSync start
+    }
+    
+    // Wait for VSync to complete (optional - ensures we're in blanking period)  
+    while ltdc.cdsr.read().vsyncs().bit_is_set() {
+        // Wait for VSync flag to clear
+    }
+}
+
 // --- Debug helpers ---
 #[allow(dead_code)]
 pub fn ltdc_status() -> (u32, u32) {
