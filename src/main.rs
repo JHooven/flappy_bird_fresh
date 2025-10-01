@@ -34,6 +34,8 @@ fn main() -> ! {
     lcd::init_ltdc();
     // Initialize display panel over SPI
     lcd_spi::init();
+    
+
 
     // Initialize I2C and MPU6050
     i2c::init_i2c1();

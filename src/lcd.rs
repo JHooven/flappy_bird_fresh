@@ -76,7 +76,6 @@ pub fn init_ltdc() {
     { ltdc.gcr.modify(|_, w| w.depol().clear_bit()); }
 
     // Background color black
-    // BCCR: background color components (all zero = black)
     ltdc.bccr.write(|w| w.bcblue().bits(0).bcgreen().bits(0).bcred().bits(0));
 
     // Do not enable LTDC interrupts until a Rust handler is provided
