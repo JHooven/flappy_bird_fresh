@@ -43,12 +43,15 @@ fn main() -> ! {
     
     let _mpu_init_result = mpu6050::init();
     
-    // Keep Layer 2 fully opaque
+    // Completely reset Layer 2 to eliminate any initialization artifacts
+    lcd::reset_layer2_clean();
+    
+    // Set Layer 2 fully opaque
     lcd::set_layer2_alpha(0xFF);
     
     // Tilt-responsive square control
-    let mut square_x: i32 = ((lcd::LCD_WIDTH - lcd::LAYER2_W) / 2) as i32; // Center X
-    let mut square_y: i32 = ((lcd::LCD_HEIGHT - lcd::LAYER2_H) / 2) as i32; // Center Y
+    let mut square_x: i32 = 0; // Start at left edge
+    let mut square_y: i32 = 0; // Start at top edge
     
     // Movement parameters  
     const TILT_SENSITIVITY: i32 = 100; // Higher = more sensitive
@@ -79,10 +82,10 @@ fn main() -> ! {
             square_y = square_y.max(0).min(max_y);
         }
         
-        // Wait for VSync before updating position to prevent screen tearing
+        // Wait for VSync to prevent moving scan line artifacts
         lcd::wait_for_vsync();
         
-        // Update square position on screen (synchronized to vertical blanking)
+        // Update square position on screen
         lcd::set_layer2_position(square_x as u32, square_y as u32);
     }
 }

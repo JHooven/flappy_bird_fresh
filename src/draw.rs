@@ -11,30 +11,24 @@ pub fn layer1_checkerboard() {
 fn fill_checkerboard_to(base: u32) {
     let pixels = (LCD_WIDTH * LCD_HEIGHT) as usize;
     let buf = unsafe { slice::from_raw_parts_mut(base as *mut u32, pixels) };
-    let cel_count = (LCD_WIDTH >> 5) + (LCD_HEIGHT >> 5);
-    for row in 0..LCD_HEIGHT {
-        for col in 0..LCD_WIDTH {
-            let i = (row * LCD_WIDTH + col) as usize;
-            let cel = (row >> 5) + (col >> 5);
-            let mut a: u8 = if (cel & 1) != 0 { 0 } else { 0xFF };
-            let mut r: u8 = (row * 0xFF / LCD_HEIGHT) as u8;
-            let mut g: u8 = (col * 0xFF / LCD_WIDTH) as u8;
-            let mut b: u8 = (0xFF * (cel_count - cel - 1) / cel_count) as u8;
-            if (cel & 3) == 0 { b = 0; }
-            if row % 32 == 0 || col % 32 == 0 {
-                r = if a != 0 { 0xFF } else { 0 }; g = r; b = r; a = 0xFF;
-            }
-            let pix = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
-            buf[i] = pix;
-        }
+    
+    // Simple solid background to eliminate any framebuffer artifacts
+    for i in 0..pixels {
+        let a: u8 = 0xFF; // Fully opaque
+        let r: u8 = 48;   // Dark gray background
+        let g: u8 = 48;   // Dark gray background  
+        let b: u8 = 48;   // Dark gray background
+        let pix = ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+        buf[i] = pix;
     }
 }
 
 pub fn layer2_sprite() {
     let pixels = (LAYER2_W * LAYER2_H) as usize;
     let buf = unsafe { slice::from_raw_parts_mut(LAYER2_BASE as *mut u32, pixels) };
-    // Clear to fully transparent
-    for p in buf.iter_mut() { *p = 0; }
+    
+    // Clear to fully transparent black (0x00000000)
+    for p in buf.iter_mut() { *p = 0x00000000; }
 
     // Draw a full-size rectangle with a color gradient, fully opaque inside
     let rx0 = 0;

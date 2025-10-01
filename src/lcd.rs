@@ -187,26 +187,40 @@ pub fn set_layer2_position(x: u32, y: u32) {
     use core::cmp::min;
     let dp = unsafe { pac::Peripherals::steal() };
     let ltdc = dp.LTDC;
-    // Constrain to screen bounds
-    let x = min(x, LCD_WIDTH.saturating_sub(LAYER2_W));
-    let y = min(y, LCD_HEIGHT.saturating_sub(LAYER2_H));
+    
+    // Constrain to screen bounds with extra safety margin
+    let x = min(x, LCD_WIDTH.saturating_sub(LAYER2_W).saturating_sub(1));
+    let y = min(y, LCD_HEIGHT.saturating_sub(LAYER2_H).saturating_sub(1));
+    
     let h_start = HSYNC + HBP + x;
     let h_stop = h_start + LAYER2_W - 1;
     let v_start = VSYNC + VBP + y;
     let v_stop = v_start + LAYER2_H - 1;
+    
+    // Ensure values are within valid 16-bit range
+    let h_start = (h_start as u16).min(1023);
+    let h_stop = (h_stop as u16).min(1023);
+    let v_start = (v_start as u16).min(1023);
+    let v_stop = (v_stop as u16).min(1023);
+    
+    // Disable layer temporarily to prevent artifacts during register updates
+    ltdc.layer2.cr.modify(|_, w| w.len().clear_bit());
+    
+    // Update position registers
     ltdc.layer2.whpcr.write(|w| w
-        .whstpos().bits(h_start as u16)
-        .whsppos().bits(h_stop as u16)
+        .whstpos().bits(h_start)
+        .whsppos().bits(h_stop)
     );
     ltdc.layer2.wvpcr.write(|w| w
-        .wvstpos().bits(v_start as u16)
-        .wvsppos().bits(v_stop as u16)
+        .wvstpos().bits(v_start)
+        .wvsppos().bits(v_stop)
     );
-    // Apply position update
-    #[cfg(feature = "l2-immediate")]
-    { ltdc.srcr.modify(|_, w| w.imr().set_bit()); }
-    #[cfg(not(feature = "l2-immediate"))]
-    { ltdc.srcr.modify(|_, w| w.vbr().set_bit()); }
+    
+    // Re-enable layer
+    ltdc.layer2.cr.modify(|_, w| w.len().set_bit());
+    
+    // Apply position update at VBlank for clean transition
+    ltdc.srcr.modify(|_, w| w.vbr().set_bit());
 }
 
 pub fn set_layer2_alpha(alpha: u8) {
@@ -324,6 +338,27 @@ pub fn wait_for_vsync() {
     while ltdc.cdsr.read().vsyncs().bit_is_set() {
         // Wait for VSync flag to clear
     }
+}
+
+// Reset Layer 2 to eliminate any edge artifacts or residual pixels
+pub fn reset_layer2_clean() {
+    let dp = unsafe { pac::Peripherals::steal() };
+    let ltdc = dp.LTDC;
+    
+    // Disable Layer 2 temporarily
+    ltdc.layer2.cr.modify(|_, w| w.len().clear_bit());
+    
+    // Force immediate update to clear any pending changes
+    ltdc.srcr.modify(|_, w| w.imr().set_bit());
+    
+    // Small delay to ensure hardware processes the disable
+    for _ in 0..1000 { unsafe { core::arch::asm!("nop"); } }
+    
+    // Re-enable Layer 2 with clean state
+    ltdc.layer2.cr.modify(|_, w| w.len().set_bit());
+    
+    // Apply changes at next VBlank
+    ltdc.srcr.modify(|_, w| w.vbr().set_bit());
 }
 
 // --- Debug helpers ---
