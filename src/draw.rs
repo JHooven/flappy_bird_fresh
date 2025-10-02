@@ -162,3 +162,4 @@ pub fn draw_fps_overlay(fps: u32) {
     // Present updated back buffer during vertical blanking
     lcd::swap_layer1_buffers();
 }
+

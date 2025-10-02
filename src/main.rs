@@ -11,6 +11,7 @@ mod lcd_spi;
 mod draw;
 mod i2c;
 mod mpu6050;
+mod game;
 
 
 #[entry]
