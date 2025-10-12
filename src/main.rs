@@ -12,6 +12,12 @@ mod draw;
 mod i2c;
 mod mpu6050;
 mod game;
+mod assets;
+mod color;
+mod config;
+mod display;
+mod obstacle;
+mod player;
 
 
 #[entry]

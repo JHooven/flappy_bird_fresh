@@ -82,6 +82,25 @@ fn draw_rect_buf(buf: &mut [u32], x: u32, y: u32, w: u32, h: u32, color: u32) {
     }
 }
 
+// #[cfg(feature = "overlay")]
+// pub fn draw_image_buf(buf: &mut [u32], x: u32, y: u32, w: u32, h: u32, colors: [u32]) {
+//     let x = x.min(LCD_WIDTH);
+//     let y = y.min(LCD_HEIGHT);
+//     let w = w.min(LCD_WIDTH.saturating_sub(x));
+//     let h = h.min(LCD_HEIGHT.saturating_sub(y));
+    
+//     if w == 0 || h == 0 { return; }
+    
+//     let color_index = 0;
+
+//     let stride = LCD_WIDTH as usize;
+//     for row in 0..h {
+//         let base = (y + row) as usize * stride + x as usize;
+//         for col in 0..w {
+//             buf[base + col as usize] = colors[color_index = (color_index + 1) % colors.len()];
+//         }
+//     }
+// }
 // 7-segment digit at (x,y), scaled by s
 #[cfg(feature = "overlay")]
 fn draw_digit_buf(buf: &mut [u32], x: u32, y: u32, digit: u8, s: u32, color: u32) {
