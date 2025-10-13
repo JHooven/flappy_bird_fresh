@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const BACKGROUND: u16 = 0x9F5E;
 pub const WHITE: u16 = 0xFFFF;
 pub const BLACK: u16 = 0x0000;

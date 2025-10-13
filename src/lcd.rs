@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use stm32f4::stm32f429 as pac;
 
 pub struct LcdDriver {

@@ -27,13 +27,19 @@ impl Player {
         } else {
             self.y = new_y;
         }
-        
+
         self.draw();
         self.clear(old_y);
     }
 
     fn draw(&self) {
-        display::draw_image(self.x, self.w, self.y, self.h, &assets::BIRD_IMG_DATA);
+        display::draw_image(
+            self.x,
+            self.w,
+            self.y,
+            self.h,
+            assets::BIRD_IMG_DATA.as_ptr(),
+        );
     }
 
     fn clear(&self, old_y: Coord) {

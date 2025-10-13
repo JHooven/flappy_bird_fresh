@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub type Coord = i32;
 
 pub const LCD_WIDTH: u32 = 240;
@@ -20,7 +22,6 @@ pub const PLAYER_HEIGHT: u32 = 30;
 pub const GRAVITY: i32 = 0;
 
 pub const GROUND_Y_POS: Coord = 210;
-
 
 pub const MPU6050_DEV_ADDR: u8 = 0x68;
 

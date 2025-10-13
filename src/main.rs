@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![allow(dead_code)]
 
 use cortex_m_rt::entry;
 use panic_halt as _;
@@ -20,51 +21,46 @@ mod obstacle;
 mod player;
 mod sdram;
 
+// Import the types we need
+use config::Coord;
+use game::{Game, InputDevice};
+
+// Dummy input device for now
+struct DummyInputDevice;
+
+impl DummyInputDevice {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl InputDevice for DummyInputDevice {
+    type Error = ();
+
+    fn init(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn is_tap(&mut self, _y_min: Coord, _y_max: Coord) -> Result<(Coord, bool), Self::Error> {
+        // For now, never report a tap
+        Ok((0, false))
+    }
+}
+
 #[entry]
 fn main() -> ! {
     let lcd_driver = init();
 
-    let mut square_x: i32 = ((lcd::LCD_WIDTH - lcd::LAYER2_W) / 2) as i32; // Center X
-    let mut square_y: i32 = ((lcd::LCD_HEIGHT - lcd::LAYER2_H) / 2) as i32; // Center Y
+    display::register_driver(&lcd_driver);
 
-    // Movement parameters
-    const TILT_SENSITIVITY: i32 = 100; // Higher = more sensitive
-    const MAX_SPEED: i32 = 8; // Maximum pixels per frame
+    display::init(); // Initialize display module
 
+    let input = DummyInputDevice::new();
+    let mut game_instance = Game::init(input).expect("Failed to initialize game");
+
+    // Game loop
     loop {
-        // Read MPU6050 data
-        if let Ok(data) = mpu6050::read_data() {
-            // Convert tilt to screen movement
-            // Accelerometer range is ±2g = ±32768 LSB
-            // Map tilt to screen velocity with sensitivity and speed limiting
-
-            // X-axis: Roll (tilt left/right) -> horizontal movement
-            let vel_x = ((data.accel_y as i32) / TILT_SENSITIVITY)
-                .max(-MAX_SPEED)
-                .min(MAX_SPEED);
-
-            // Y-axis: Pitch (tilt forward/backward) -> vertical movement
-            let vel_y = ((data.accel_x as i32) / TILT_SENSITIVITY)
-                .max(-MAX_SPEED)
-                .min(MAX_SPEED);
-
-            // Update square position
-            square_x += vel_x;
-            square_y += vel_y;
-
-            // Clamp to screen boundaries (allow edge sliding)
-            let max_x = (lcd::LCD_WIDTH - lcd::LAYER2_W) as i32;
-            let max_y = (lcd::LCD_HEIGHT - lcd::LAYER2_H) as i32;
-
-            square_x = square_x.max(0).min(max_x);
-            square_y = square_y.max(0).min(max_y);
-        }
-
-        // Update square position on screen
-        lcd_driver.set_layer2_position(square_x as u32, square_y as u32);
-
-        // Minimal delay for maximum responsiveness
-        clock::delay_ms(1);
+        game_instance.update();
     }
 }
 
