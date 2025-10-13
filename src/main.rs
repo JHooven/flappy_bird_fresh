@@ -1,7 +1,8 @@
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
+use stm32f4 as _; 
+use cortex_m_rt::{entry};
 use panic_halt as _;
 
 mod sdram;
@@ -22,38 +23,9 @@ mod player;
 
 #[entry]
 fn main() -> ! {
-    // Configure system clocks to 168MHz from HSE to match C demo
-    clock::setup_system_clocks_168mhz();
-    // SysTick and base clocks
-    let cp = cortex_m::Peripherals::take().unwrap();
-    let _syst = clock::setup(cp.SYST);
-
-    // SDRAM
-    sdram::init();
-
-    // Preload frame buffers
-    draw::layer1_checkerboard();
-    draw::layer2_sprite();
-
-    // LTDC pixel clock via PLLSAI and enable LTDC clock
-    clock::setup_pllsai_for_ltdc();
-    // Configure LTDC layers first to provide sync
-    lcd::init_ltdc();
-    // Initialize display panel over SPI
-    lcd_spi::init();
-
-    // Initialize I2C and MPU6050
-    i2c::init_i2c1();
     
-    // Small delay for MPU6050 to stabilize
-    clock::delay_ms(100);
-    
-    let _mpu_init_result = mpu6050::init();
-    
-    // Keep Layer 2 fully opaque
-    lcd::set_layer2_alpha(0xFF);
-    
-    // Tilt-responsive square control
+    init();
+
     let mut square_x: i32 = ((lcd::LCD_WIDTH - lcd::LAYER2_W) / 2) as i32; // Center X
     let mut square_y: i32 = ((lcd::LCD_HEIGHT - lcd::LAYER2_H) / 2) as i32; // Center Y
     
@@ -92,4 +64,39 @@ fn main() -> ! {
         // Minimal delay for maximum responsiveness
         clock::delay_ms(1);
     }
+}
+
+fn init() {
+ // Configure system clocks to 168MHz from HSE to match C demo
+    clock::setup_system_clocks_168mhz();
+    // SysTick and base clocks
+    let cp = cortex_m::Peripherals::take().unwrap();
+    let _syst = clock::setup(cp.SYST);
+
+    // SDRAM
+    sdram::init();
+
+    // Preload frame buffers
+    draw::layer1_checkerboard();
+    draw::layer2_sprite();
+
+    // LTDC pixel clock via PLLSAI and enable LTDC clock
+    clock::setup_pllsai_for_ltdc();
+    // Configure LTDC layers first to provide sync
+    lcd::init_ltdc();
+    // Initialize display panel over SPI
+    lcd_spi::init();
+
+    // Initialize I2C and MPU6050
+    i2c::init_i2c1();
+    
+    // Small delay for MPU6050 to stabilize
+    clock::delay_ms(100);
+    
+    let _mpu_init_result = mpu6050::init();
+    
+    // Keep Layer 2 fully opaque
+    lcd::set_layer2_alpha(0xFF);
+    
+
 }
