@@ -49,11 +49,11 @@ impl InputDevice for DummyInputDevice {
 
 #[entry]
 fn main() -> ! {
-    let _lcd_driver = init();
+    let lcd_driver = init();
 
-    // Disable display module to isolate LTDC-only rendering
-    // display::register_driver(&lcd_driver);
-    // display::init(); // Initialize display module
+    // Re-enable display module - LTDC timing changes may have broken pure LTDC mode
+    display::register_driver(&lcd_driver);
+    display::init(); // Initialize display module
 
     let input = DummyInputDevice::new();
     let _game_instance = Game::init(input).expect("Failed to initialize game");

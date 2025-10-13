@@ -9,13 +9,21 @@ pub struct LcdDriver {
 pub const LCD_WIDTH: u32 = 240;
 pub const LCD_HEIGHT: u32 = 320;
 
-// Reduced timings to match actual STM32F429I-DISCO panel
-const HSYNC: u32 = 10;
-const HBP: u32 = 20;
-const HFP: u32 = 10;
-const VSYNC: u32 = 2;
-const VBP: u32 = 2;
-const VFP: u32 = 2; // Reduced from 4 to 2
+/*
+Parameter 	Horizontal (DCLKs)	Vertical (Lines)
+Active Display Area (Resolution)	320	240
+Front Porch (FP)	16 (HFP)	4 (VFP)
+Back Porch (BP)	24 (HBP)	4 (VBP)
+Sync Pulse Width (HSYNC/VSYNC)	Varies (e.g., 1-10)	Varies (e.g., 1-10)
+Total (per line/frame)	408 (320+16+24+HSYNC width)	262 (240+4+4+VSYNC width)
+*/
+// ILI9341-compatible timing parameters for STM32F429I-DISCO
+const HSYNC: u32 = 5; // Horizontal sync width
+const HBP: u32 = 24; // Horizontal back porch
+const HFP: u32 = 16; // Horizontal front porch
+const VSYNC: u32 = 5; // Vertical sync width
+const VBP: u32 = 4; // Vertical back porch
+const VFP: u32 = 4; // Vertical front porch (restored to original)
 
 // Framebuffer addresses in SDRAM (must match sdram::SDRAM_BASE)
 pub const LAYER1_BASE: u32 = super::sdram::SDRAM_BASE; // Layer1 full screen

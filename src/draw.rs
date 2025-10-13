@@ -1,16 +1,48 @@
 use core::slice;
 
-use crate::lcd::{self, LAYER1_BASE, LAYER2_BASE, LAYER2_H, LAYER2_W, LCD_HEIGHT, LCD_WIDTH};
+use crate::lcd::{LAYER1_BASE, LAYER2_BASE, LAYER2_H, LAYER2_W, LCD_HEIGHT, LCD_WIDTH};
 
 pub fn layer1_checkerboard() {
-    // Fill both front and back buffers so first swap shows identical content
-    fill_checkerboard_to(LAYER1_BASE);
-    fill_checkerboard_to(lcd::LcdDriver::layer1_back_addr());
+    // Restore original double-buffering approach
+    fill_simple_checkerboard(LAYER1_BASE);
+    fill_simple_checkerboard(crate::lcd::LcdDriver::layer1_back_addr());
+}
+
+// Test different pattern complexities to isolate the cause
+fn fill_simple_checkerboard(base: u32) {
+    let pixels = (LCD_WIDTH * LCD_HEIGHT) as usize;
+    let buf = unsafe { slice::from_raw_parts_mut(base as *mut u32, pixels) };
+
+    cortex_m::asm::dsb(); // Data Synchronization Barrier
+
+    // Test with gentler colors to reduce electrical noise
+    let color1 = 0xFF404040; // Dark gray (less contrast)
+    let color2 = 0xFFC0C0C0; // Light gray (less contrast)
+    let square_size = 64; // Larger squares = lower frequency transitions
+
+    for row in 0..LCD_HEIGHT {
+        for col in 0..LCD_WIDTH {
+            let i = (row * LCD_WIDTH + col) as usize;
+
+            // Larger, gentler checkerboard
+            let row_square = (row / square_size) & 1;
+            let col_square = (col / square_size) & 1;
+            let is_light = (row_square ^ col_square) != 0;
+
+            buf[i] = if is_light { color2 } else { color1 };
+        }
+    }
+
+    cortex_m::asm::dsb(); // Ensure writes complete
+    cortex_m::asm::isb(); // Instruction barrier
 }
 
 fn fill_checkerboard_to(base: u32) {
     let pixels = (LCD_WIDTH * LCD_HEIGHT) as usize;
     let buf = unsafe { slice::from_raw_parts_mut(base as *mut u32, pixels) };
+
+    // Ensure memory coherency before writing
+    cortex_m::asm::dsb(); // Data Synchronization Barrier
     let cel_count = (LCD_WIDTH >> 5) + (LCD_HEIGHT >> 5);
     for row in 0..LCD_HEIGHT {
         for col in 0..LCD_WIDTH {
@@ -19,13 +51,7 @@ fn fill_checkerboard_to(base: u32) {
             let mut a: u8 = if (cel & 1) != 0 { 0 } else { 0xFF };
             let mut r: u8 = (row * 0xFF / LCD_HEIGHT) as u8;
             let mut g: u8 = (col * 0xFF / LCD_WIDTH) as u8;
-            // Fix underflow by ensuring proper bounds
-            let cel_clamped = cel.min(cel_count.saturating_sub(1));
-            let mut b: u8 = if cel_count > 0 {
-                ((0xFF * (cel_count - cel_clamped - 1)) / cel_count).min(0xFF) as u8
-            } else {
-                0
-            };
+            let mut b: u8 = (0xFF * (cel_count - cel - 1) / cel_count) as u8;
             if (cel & 3) == 0 {
                 b = 0;
             }
@@ -39,6 +65,10 @@ fn fill_checkerboard_to(base: u32) {
             buf[i] = pix;
         }
     }
+
+    // Ensure all writes complete before LTDC reads
+    cortex_m::asm::dsb(); // Data Synchronization Barrier
+    cortex_m::asm::isb(); // Instruction Synchronization Barrier
 }
 
 pub fn layer2_sprite() {
@@ -221,6 +251,6 @@ pub fn draw_fps_overlay(fps: u32) {
     x += 6 * s + s;
     draw_digit_buf(buf, x, y0 + s, d0, s, white);
 
-    // Present updated back buffer during vertical blanking
-    lcd::swap_layer1_buffers();
+    // Disable buffer swapping to prevent vertical line artifacts from uninitialized back buffer
+    // lcd::swap_layer1_buffers();
 }
