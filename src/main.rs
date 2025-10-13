@@ -2,6 +2,7 @@
 #![no_main]
 #![allow(dead_code)]
 
+use cortex_m::delay;
 use cortex_m_rt::entry;
 use panic_halt as _;
 use stm32f4 as _;
@@ -24,6 +25,8 @@ mod sdram;
 // Import the types we need
 use config::Coord;
 use game::{Game, InputDevice};
+
+use crate::clock::setup_system_clocks_168mhz;
 
 // Dummy input device for now
 struct DummyInputDevice;
@@ -58,15 +61,18 @@ fn main() -> ! {
     let input = DummyInputDevice::new();
     let mut game_instance = Game::init(input).expect("Failed to initialize game");
 
+    setup_system_clocks_168mhz();
+
     // Game loop
     loop {
         game_instance.update();
+        clock::delay_ms(200);
     }
 }
 
 fn init() -> lcd::LcdDriver {
     // Configure system clocks to 168MHz from HSE to match C demo
-    clock::setup_system_clocks_168mhz();
+    //clock::setup_system_clocks_168mhz();
     // SysTick and base clocks
     let cp = cortex_m::Peripherals::take().unwrap();
     let _syst = clock::setup(cp.SYST);
@@ -88,10 +94,27 @@ fn init() -> lcd::LcdDriver {
     // Initialize I2C and MPU6050
     i2c::init_i2c1();
 
-    // Small delay for MPU6050 to stabilize
-    clock::delay_ms(100);
+    // Small delay for I2C to stabilize
+    clock::delay_ms(50);
 
-    let _mpu_init_result = mpu6050::init();
+    // Try to initialize MPU6050, with I2C reset on failure
+    let mut mpu_init_attempts = 3;
+    loop {
+        let mpu_init_result = mpu6050::init();
+        if mpu_init_result.is_ok() {
+            break;
+        }
+
+        mpu_init_attempts -= 1;
+        if mpu_init_attempts == 0 {
+            // If all attempts fail, continue anyway (MPU6050 is not critical for display)
+            break;
+        }
+
+        // Reset I2C and try again
+        i2c::reset_i2c1();
+        clock::delay_ms(100);
+    }
 
     // Keep Layer 2 fully opaque
     lcd_driver.set_layer2_alpha(0xFF);

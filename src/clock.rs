@@ -21,92 +21,90 @@ pub fn setup_system_clocks_168mhz() {
 
     // Configure Flash latency and caches
     // 5 wait states for 168MHz at 3.3V, enable I/D cache and prefetch
-    flash.acr.modify(|_, w| w
-        .latency().ws5() // 5 wait states
-        .icen().set_bit()
-        .dcen().set_bit()
-        .prften().set_bit()
-    );
+    flash.acr.modify(|_, w| {
+        w.latency()
+            .ws5() // 5 wait states
+            .icen()
+            .set_bit()
+            .dcen()
+            .set_bit()
+            .prften()
+            .set_bit()
+    });
 
-    // Set prescalers: AHB=1, APB1=4, APB2=2
-    rcc.cfgr.modify(|_, w| w
-        .hpre().div1()
-        .ppre1().div4()
-        .ppre2().div2()
-    );
+    // Configure PLL: HSE = 8MHz, VCO = 336MHz, SYSCLK = 168MHz
+    // PLLM = 8, PLLN = 336, PLLP = 2, PLLQ = 7
+    rcc.pllcfgr.modify(|_, w| unsafe {
+        w.pllsrc()
+            .hse()
+            .pllm()
+            .bits(8)
+            .plln()
+            .bits(336)
+            .pllp()
+            .div2()
+            .pllq()
+            .bits(7)
+    });
 
-    // Configure PLL: PLLSRC=HSE, PLLM=8, PLLN=336, PLLP=2, PLLQ=7
-    // PLLCFGR fields: PLLSRC (bit22), PLLM[5:0], PLLN[14:6], PLLP[17:16] (00=>/2), PLLQ[27:24]
-    let pllm: u32 = 8;
-    let plln: u32 = 336;
-    let pllp_bits: u32 = 0b00; // /2
-    let pllq: u32 = 7;
-    let pllcfgr = (1 << 22) // PLLSRC=HSE
-        | (pllm & 0x3F)
-        | ((plln & 0x1FF) << 6)
-        | (pllp_bits << 16)
-        | ((pllq & 0x0F) << 24);
-    rcc.pllcfgr.write(|w| unsafe { w.bits(pllcfgr) });
-
-    // Enable PLL and wait ready
+    // Enable PLL
     rcc.cr.modify(|_, w| w.pllon().on());
     while rcc.cr.read().pllrdy().is_not_ready() {}
 
-    // Switch SYSCLK to PLL
+    // Configure prescalers: AHB = SYSCLK, APB1 = SYSCLK/4, APB2 = SYSCLK/2
+    rcc.cfgr.modify(
+        |_, w| {
+            w.hpre()
+                .div1() // AHB prescaler = 1
+                .ppre1()
+                .div4() // APB1 prescaler = 4 (42MHz max)
+                .ppre2()
+                .div2()
+        }, // APB2 prescaler = 2 (84MHz max)
+    );
+
+    // Switch to PLL
     rcc.cfgr.modify(|_, w| w.sw().pll());
     while !rcc.cfgr.read().sws().is_pll() {}
-
-    // Optionally disable HSI to save power
-    rcc.cr.modify(|_, w| w.hsion().off());
 }
 
+// Setup SysTick for basic timing - returns the configured SYST peripheral
 pub fn setup(mut syst: SYST) -> SYST {
-    // We assume device already starts with HSE 8MHz and system at 168MHz
-    // like libopencm3's rcc_clock_setup_pll does. For Rust PAC, a full
-    // PLL setup is verbose; for now we just enable SysTick at 1kHz.
-    syst.set_clock_source(SystClkSource::Core);
-    // 168_000_000 / 168_000 = 1000 Hz
-    syst.set_reload(168_000 - 1);
+    // Configure SysTick to tick every millisecond at 168MHz
+    // SysTick reload = (168MHz / 1000Hz) - 1 = 167999
+    syst.set_reload(167_999);
     syst.clear_current();
+    syst.set_clock_source(SystClkSource::Core);
     syst.enable_counter();
-    // Don't enable SysTick interrupt until a handler is provided.
-    // We only use busy-wait delays for now.
+    // Note: We're not enabling interrupts for this simple implementation
     syst
 }
 
-// Configure PLLSAI to provide ~6MHz pixel clock and enable LTDC clock
+// Configure PLLSAI for LTDC pixel clock
 pub fn setup_pllsai_for_ltdc() {
     let dp = unsafe { pac::Peripherals::steal() };
     let rcc = dp.RCC;
-    // Set PLLSAIN=192, PLLSAIR=4, keep Q as reset value, DIVR=8
-    // RCC_PLLSAICFGR: bits [14:6]=PLLSAIN, [30:28]=PLLSAIR
-    let saicfgr = rcc.pllsaicfgr.read().bits();
-    let saiq = (saicfgr >> 24) & 0xF; // preserve Q
-    let sain: u32 = 192;
-    let sair: u32 = 4;
-    let new_saicfgr = (sain << 6) | (saiq << 24) | (sair << 28);
-    rcc.pllsaicfgr.write(|w| unsafe { w.bits(new_saicfgr) });
 
-    // DIVR in DCKCFGR bits [17:16]: 00=2,01=4,10=8,11=16
-    let mut dckcfgr = rcc.dckcfgr.read().bits();
-    dckcfgr &= !(0b11 << 16);
-    #[cfg(feature = "pclk-div-2")]
-    { dckcfgr |= 0b00 << 16; }
-    #[cfg(feature = "pclk-div-4")]
-    { dckcfgr |= 0b01 << 16; }
-    #[cfg(all(not(feature = "pclk-div-2"), not(feature = "pclk-div-4"), not(feature = "pclk-div-16")))]
-    { dckcfgr |= 0b10 << 16; } // default DIVR_8
-    #[cfg(feature = "pclk-div-16")]
-    { dckcfgr |= 0b11 << 16; }
-    rcc.dckcfgr.write(|w| unsafe { w.bits(dckcfgr) });
+    // Configure PLLSAI for LCD timing
+    // We only use busy-wait delays for now.
 
-    // Enable PLLSAI and wait ready
+    // PLLSAI configuration for LTDC
+    // This is a simplified setup - adjust based on your exact timing requirements
+    rcc.pllsaicfgr.modify(|_, w| unsafe {
+        w.pllsain()
+            .bits(192) // VCO frequency
+            .pllsair()
+            .bits(4) // Division factor for LCD clock
+    });
+
+    // Enable PLLSAI
     rcc.cr.modify(|_, w| w.pllsaion().on());
     while rcc.cr.read().pllsairdy().is_not_ready() {}
-    // Enable LTDC clock on APB2
+
+    // Enable LTDC clock
     rcc.apb2enr.modify(|_, w| w.ltdcen().enabled());
 
-    // Debug-only sanity checks
+    // Verify clocks are ready
     debug_assert!(rcc.cr.read().pllsairdy().is_ready());
     debug_assert!(rcc.apb2enr.read().ltdcen().is_enabled());
 }
@@ -114,7 +112,10 @@ pub fn setup_pllsai_for_ltdc() {
 // Crude busy-wait millisecond delay assuming SysTick at 1kHz
 pub fn delay_ms(ms: u32) {
     // Fallback: busy loop scaled for ~168MHz (very rough)
-    let cycles = 168_000 * ms;
-    let mut n = cycles;
-    while n != 0 { cortex_m::asm::nop(); n -= 1; }
+    //let cycles = 168_000 * ms;
+    let mut n = ms;
+    while n != 0 {
+        cortex_m::asm::nop();
+        n -= 1;
+    }
 }
