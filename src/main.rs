@@ -2,7 +2,6 @@
 #![no_main]
 #![allow(dead_code)]
 
-use cortex_m::delay;
 use cortex_m_rt::entry;
 use panic_halt as _;
 use stm32f4 as _;
@@ -25,8 +24,6 @@ mod sdram;
 // Import the types we need
 use config::Coord;
 use game::{Game, InputDevice};
-
-use crate::clock::setup_system_clocks_168mhz;
 
 // Dummy input device for now
 struct DummyInputDevice;
@@ -52,21 +49,19 @@ impl InputDevice for DummyInputDevice {
 
 #[entry]
 fn main() -> ! {
-    let lcd_driver = init();
+    let _lcd_driver = init();
 
-    display::register_driver(&lcd_driver);
-
-    display::init(); // Initialize display module
+    // Disable display module to isolate LTDC-only rendering
+    // display::register_driver(&lcd_driver);
+    // display::init(); // Initialize display module
 
     let input = DummyInputDevice::new();
-    let mut game_instance = Game::init(input).expect("Failed to initialize game");
+    let _game_instance = Game::init(input).expect("Failed to initialize game");
 
-    setup_system_clocks_168mhz();
-
-    // Game loop
+    // Minimal test loop - just show checkerboard without game updates
     loop {
-        game_instance.update();
-        clock::delay_ms(200);
+        // _game_instance.update();  // Disable game updates for testing
+        clock::delay_ms(1000); // Very slow for debugging
     }
 }
 
@@ -77,21 +72,22 @@ fn init() -> lcd::LcdDriver {
     let cp = cortex_m::Peripherals::take().unwrap();
     let _syst = clock::setup(cp.SYST);
 
-    // SDRAM
+    // Setup clocks first before initializing LTDC
+    clock::setup_system_clocks_168mhz();
+    clock::setup_pllsai_for_ltdc();
+
+    // Initialize SDRAM for framebuffers
     sdram::init();
 
-    // Preload frame buffers
+    // Setup LTDC and framebuffers
     draw::layer1_checkerboard();
-    draw::layer2_sprite();
+    // draw::layer2_sprite();  // Disable layer2 to reduce conflicts
 
-    // LTDC pixel clock via PLLSAI and enable LTDC clock
-    clock::setup_pllsai_for_ltdc();
-    // Configure LTDC layers first to provide sync
+    // Create LCD driver (this will configure LTDC)
     let lcd_driver = lcd::LcdDriver::new();
-    // Initialize display panel over SPI
-    lcd_spi::init();
 
-    // Initialize I2C and MPU6050
+    // Initialize SPI display
+    lcd_spi::init(); // Initialize I2C and MPU6050
     i2c::init_i2c1();
 
     // Small delay for I2C to stabilize

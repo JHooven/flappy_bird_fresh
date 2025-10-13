@@ -19,7 +19,13 @@ fn fill_checkerboard_to(base: u32) {
             let mut a: u8 = if (cel & 1) != 0 { 0 } else { 0xFF };
             let mut r: u8 = (row * 0xFF / LCD_HEIGHT) as u8;
             let mut g: u8 = (col * 0xFF / LCD_WIDTH) as u8;
-            let mut b: u8 = (0xFF * (cel_count - cel - 1) / cel_count) as u8;
+            // Fix underflow by ensuring proper bounds
+            let cel_clamped = cel.min(cel_count.saturating_sub(1));
+            let mut b: u8 = if cel_count > 0 {
+                ((0xFF * (cel_count - cel_clamped - 1)) / cel_count).min(0xFF) as u8
+            } else {
+                0
+            };
             if (cel & 3) == 0 {
                 b = 0;
             }

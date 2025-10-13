@@ -88,13 +88,13 @@ pub fn setup_pllsai_for_ltdc() {
     // Configure PLLSAI for LCD timing
     // We only use busy-wait delays for now.
 
-    // PLLSAI configuration for LTDC
-    // This is a simplified setup - adjust based on your exact timing requirements
+    // PLLSAI configuration for LTDC - more conservative settings
+    // Targeting ~9MHz pixel clock for stable operation
     rcc.pllsaicfgr.modify(|_, w| unsafe {
         w.pllsain()
-            .bits(192) // VCO frequency
+            .bits(216) // VCO frequency (more stable)
             .pllsair()
-            .bits(4) // Division factor for LCD clock
+            .bits(6) // Higher division for slower, more stable clock
     });
 
     // Enable PLLSAI

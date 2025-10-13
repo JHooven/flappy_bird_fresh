@@ -3,8 +3,7 @@
 pub type Coord = i32;
 
 pub const LCD_WIDTH: u32 = 240;
-pub const LCD_HEIGHT: u32 = 240;
-
+pub const LCD_HEIGHT: u32 = 320;
 pub const OBSTACLE_WIDTH: u32 = 30;
 pub const OBSTACLE_GAP: u32 = 80;
 

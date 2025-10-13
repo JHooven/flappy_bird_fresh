@@ -15,8 +15,9 @@ pub enum DisplayOrientation {
 }
 
 // GC9A01A LCD display constants
-pub const GC9A01A_WIDTH: u32 = 240;
-pub const GC9A01A_HEIGHT: u32 = 240;
+// Display dimensions for STM32F429ZI Discovery board (ILI9341)
+pub const DISPLAY_WIDTH: u32 = 240;
+pub const DISPLAY_HEIGHT: u32 = 320;
 
 // GC9A01A command definitions (ported from gc9a01a.h)
 const GC9A01A_NOP: u8 = 0x00; // No operation
@@ -201,18 +202,18 @@ impl Display {
         let h: u16 = h.try_into().expect("height out of range");
 
         // Bounds checking
-        if x >= GC9A01A_WIDTH as u16 || y >= GC9A01A_HEIGHT as u16 {
+        if x >= DISPLAY_WIDTH as u16 || y >= DISPLAY_HEIGHT as u16 {
             return;
         }
 
-        let w = if (x + w - 1) >= GC9A01A_WIDTH as u16 {
-            GC9A01A_WIDTH as u16 - x
+        let w = if (x + w - 1) >= DISPLAY_WIDTH as u16 {
+            DISPLAY_WIDTH as u16 - x
         } else {
             w
         };
 
-        let h = if (y + h - 1) >= GC9A01A_HEIGHT as u16 {
-            GC9A01A_HEIGHT as u16 - y
+        let h = if (y + h - 1) >= DISPLAY_HEIGHT as u16 {
+            DISPLAY_HEIGHT as u16 - y
         } else {
             h
         };
@@ -230,7 +231,7 @@ impl Display {
 
     // Fill screen with color (ported from gc9a01a_fill_screen)
     pub fn set_background_color(&self, bg_color: u16) {
-        self.fill_rect(0, GC9A01A_WIDTH as u16, 0, GC9A01A_HEIGHT as u16, bg_color);
+        self.fill_rect(0, DISPLAY_WIDTH as u16, 0, DISPLAY_HEIGHT as u16, bg_color);
     }
 
     // Draw rectangle (ported from gc9a01a_fill_rect)
@@ -251,10 +252,10 @@ impl Display {
         if let Ok(rust_str) = c_str.to_str() {
             for ch in rust_str.chars() {
                 // Handle line wrapping
-                if x + FONT_16X26.width as u16 >= GC9A01A_WIDTH as u16 {
+                if x + FONT_16X26.width as u16 >= DISPLAY_WIDTH as u16 {
                     x = 0;
                     y += FONT_16X26.height as u16;
-                    if y + FONT_16X26.height as u16 >= GC9A01A_HEIGHT as u16 {
+                    if y + FONT_16X26.height as u16 >= DISPLAY_HEIGHT as u16 {
                         break;
                     }
 
@@ -300,7 +301,7 @@ impl Display {
 
     // Draw single pixel (ported from gc9a01a_draw_pixel)
     pub fn draw_pixel(&self, x: u16, y: u16, color: u16) {
-        if x >= GC9A01A_WIDTH as u16 || y >= GC9A01A_HEIGHT as u16 {
+        if x >= DISPLAY_WIDTH as u16 || y >= DISPLAY_HEIGHT as u16 {
             return;
         }
 
@@ -313,18 +314,18 @@ impl Display {
 
     // Fill rectangle helper (ported from gc9a01a_fill_rect)
     fn fill_rect(&self, x: u16, w: u16, y: u16, h: u16, color: u16) {
-        if x >= GC9A01A_WIDTH as u16 || y >= GC9A01A_HEIGHT as u16 {
+        if x >= DISPLAY_WIDTH as u16 || y >= DISPLAY_HEIGHT as u16 {
             return;
         }
 
-        let w = if (x + w - 1) >= GC9A01A_WIDTH as u16 {
-            GC9A01A_WIDTH as u16 - x
+        let w = if (x + w - 1) >= DISPLAY_WIDTH as u16 {
+            DISPLAY_WIDTH as u16 - x
         } else {
             w
         };
 
-        let h = if (y + h - 1) >= GC9A01A_HEIGHT as u16 {
-            GC9A01A_HEIGHT as u16 - y
+        let h = if (y + h - 1) >= DISPLAY_HEIGHT as u16 {
+            DISPLAY_HEIGHT as u16 - y
         } else {
             h
         };

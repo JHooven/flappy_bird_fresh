@@ -65,6 +65,7 @@ impl<T: InputDevice> Game<T> {
         match self.state {
             GameState::Start => {
                 if self.run_countdown() {
+                    // Only set background once when transitioning to running state
                     Game::<T>::set_background();
                     self.state = GameState::Running;
                 }
@@ -119,10 +120,10 @@ impl<T: InputDevice> Game<T> {
     }
 
     pub fn set_background() {
-        //1. set the background color
-        display::set_background_color(color::BACKGROUND);
+        // Skip overwriting the checkerboard background - it's already drawn
+        // Only draw the game elements on top of it
 
-        //2. print the scoreboard area
+        //1. print the scoreboard area (without clearing the background)
         print_score_card_background();
 
         //3. print the plant

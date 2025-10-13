@@ -9,13 +9,13 @@ pub struct LcdDriver {
 pub const LCD_WIDTH: u32 = 240;
 pub const LCD_HEIGHT: u32 = 320;
 
-// Exact timings from libopencm3 lcd-dma example
+// Reduced timings to match actual STM32F429I-DISCO panel
 const HSYNC: u32 = 10;
 const HBP: u32 = 20;
 const HFP: u32 = 10;
 const VSYNC: u32 = 2;
 const VBP: u32 = 2;
-const VFP: u32 = 4;
+const VFP: u32 = 2; // Reduced from 4 to 2
 
 // Framebuffer addresses in SDRAM (must match sdram::SDRAM_BASE)
 pub const LAYER1_BASE: u32 = super::sdram::SDRAM_BASE; // Layer1 full screen
