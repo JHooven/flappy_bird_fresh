@@ -2,6 +2,11 @@ use crate::config::*;
 use core::convert::TryInto;
 use core::ffi;
 
+enum disply_orientation{
+	PORTRAIT,
+	LANDSCAPE,
+}
+
 extern "C" {
     fn display_register_driver(driver: *const DisplayDriver);
     fn display_init();
