@@ -14,37 +14,44 @@ pub enum DisplayOrientation {
     Landscape,
 }
 
-// GC9A01A LCD display constants
-// Display dimensions for STM32F429ZI Discovery board (ILI9341)
+// ILI9341 LCD display constants for STM32F429ZI Discovery board
 pub const DISPLAY_WIDTH: u32 = 240;
 pub const DISPLAY_HEIGHT: u32 = 320;
 
-// GC9A01A command definitions (ported from gc9a01a.h)
-const GC9A01A_NOP: u8 = 0x00; // No operation
-const GC9A01A_SWRESET: u8 = 0x01; // Software Reset
-const GC9A01A_SLPIN: u8 = 0x10; // Enter Sleep Mode
-const GC9A01A_SLPOUT: u8 = 0x11; // Sleep Out
-const GC9A01A_INVOFF: u8 = 0x20; // Display Inversion OFF
-const GC9A01A_INVON: u8 = 0x21; // Display Inversion ON
-const GC9A01A_DISPOFF: u8 = 0x28; // Display OFF
-const GC9A01A_DISPON: u8 = 0x29; // Display ON
-const GC9A01A_CASET: u8 = 0x2A; // Column Address Set
-const GC9A01A_RASET: u8 = 0x2B; // Row Address Set
-const GC9A01A_RAMWR: u8 = 0x2C; // Memory Write
-const GC9A01A_MADCTL: u8 = 0x36; // Memory Access Control
-const GC9A01A_COLMOD: u8 = 0x3A; // Pixel Format Set
-const GC9A01A_TEON: u8 = 0x35; // Tearing Effect Line ON
-const GC9A01A_FRAMERATE: u8 = 0xE8; // Frame rate control
-const GC9A01A_INREGEN1: u8 = 0xFE; // Inter register enable 1
-const GC9A01A_INREGEN2: u8 = 0xEF; // Inter register enable 2
-const GC9A01A_GAMMA1: u8 = 0xF0; // Set gamma 1
-const GC9A01A_GAMMA2: u8 = 0xF1; // Set gamma 2
-const GC9A01A_GAMMA3: u8 = 0xF2; // Set gamma 3
-const GC9A01A_GAMMA4: u8 = 0xF3; // Set gamma 4
-const GC9A01A_DISP_CTRL: u8 = 0xB6; // Display Function Control
-const GC9A01A1_POWER2: u8 = 0xC3; // Power Control 2
-const GC9A01A1_POWER3: u8 = 0xC4; // Power Control 3
-const GC9A01A1_POWER4: u8 = 0xC9; // Power Control 4
+// ILI9341 command definitions (correct for STM32F429ZI Discovery board)
+const ILI9341_NOP: u8 = 0x00; // No operation
+const ILI9341_SWRESET: u8 = 0x01; // Software Reset
+const ILI9341_RDDID: u8 = 0x04; // Read Display ID
+const ILI9341_RDDST: u8 = 0x09; // Read Display Status
+const ILI9341_SLPIN: u8 = 0x10; // Enter Sleep Mode
+const ILI9341_SLPOUT: u8 = 0x11; // Sleep Out
+const ILI9341_PTLON: u8 = 0x12; // Partial Mode ON
+const ILI9341_NORON: u8 = 0x13; // Normal Display Mode ON
+const ILI9341_INVOFF: u8 = 0x20; // Display Inversion OFF
+const ILI9341_INVON: u8 = 0x21; // Display Inversion ON
+const ILI9341_GAMMASET: u8 = 0x26; // Gamma Set
+const ILI9341_DISPOFF: u8 = 0x28; // Display OFF
+const ILI9341_DISPON: u8 = 0x29; // Display ON
+const ILI9341_CASET: u8 = 0x2A; // Column Address Set
+const ILI9341_PASET: u8 = 0x2B; // Page Address Set
+const ILI9341_RAMWR: u8 = 0x2C; // Memory Write
+const ILI9341_RAMRD: u8 = 0x2E; // Memory Read
+const ILI9341_MADCTL: u8 = 0x36; // Memory Access Control
+const ILI9341_PIXFMT: u8 = 0x3A; // Pixel Format Set
+const ILI9341_FRMCTR1: u8 = 0xB1; // Frame Rate Control (In Normal Mode/Full Colors)
+const ILI9341_FRMCTR2: u8 = 0xB2; // Frame Rate Control (In Idle Mode/8 colors)
+const ILI9341_FRMCTR3: u8 = 0xB3; // Frame Rate Control (In Partial Mode/Full Colors)
+const ILI9341_INVCTR: u8 = 0xB4; // Display Inversion Control
+const ILI9341_DFUNCTR: u8 = 0xB6; // Display Function Control
+const ILI9341_PWCTR1: u8 = 0xC0; // Power Control 1
+const ILI9341_PWCTR2: u8 = 0xC1; // Power Control 2
+const ILI9341_PWCTR3: u8 = 0xC2; // Power Control 3
+const ILI9341_PWCTR4: u8 = 0xC3; // Power Control 4
+const ILI9341_PWCTR5: u8 = 0xC4; // Power Control 5
+const ILI9341_VMCTR1: u8 = 0xC5; // VCOM Control 1
+const ILI9341_VMCTR2: u8 = 0xC7; // VCOM Control 2
+const ILI9341_GMCTRP1: u8 = 0xE0; // Positive Gamma Correction
+const ILI9341_GMCTRN1: u8 = 0xE1; // Negative Gamma Correction
 
 // MADCTL bit definitions
 const MADCTL_MY: u8 = 0x80; // Bottom to top
@@ -102,78 +109,84 @@ impl Display {
         // Using the LCD driver's delay mechanism if available
     }
 
-    // Configure the GC9A01A display (ported from gc9a01a_configure)
+    // Configure the ILI9341 display (proper initialization for STM32F429ZI Discovery board)
     fn configure(&self) {
-        // Complete GC9A01A configuration sequence ported from C
-        self.write_cmd(GC9A01A_INREGEN1);
-        self.write_cmd(GC9A01A_INREGEN2);
+        // ILI9341 initialization sequence for STM32F429ZI Discovery board
+        self.write_cmd(ILI9341_SWRESET);
+        self.delay_ms(200);
 
-        self.write_cmd_with_data(0xEB, &[0x14]);
-        self.write_cmd_with_data(0x84, &[0x60]);
-        self.write_cmd_with_data(0x85, &[0xFF]);
-        self.write_cmd_with_data(0x86, &[0xFF]);
-        self.write_cmd_with_data(0x87, &[0xFF]);
-        self.write_cmd_with_data(0x8E, &[0xFF]);
-        self.write_cmd_with_data(0x8F, &[0xFF]);
-        self.write_cmd_with_data(0x88, &[0x0A]);
-        self.write_cmd_with_data(0x89, &[0x21]);
-        self.write_cmd_with_data(0x8A, &[0x00]);
-        self.write_cmd_with_data(0x8B, &[0x80]);
-        self.write_cmd_with_data(0x8C, &[0x01]);
-        self.write_cmd_with_data(0x8D, &[0x03]);
-        self.write_cmd_with_data(0xB5, &[0x08, 0x09, 0x14, 0x08]);
-        self.write_cmd_with_data(GC9A01A_DISP_CTRL, &[0x00, 0x00]);
-        self.write_cmd_with_data(GC9A01A_MADCTL, &[0x48]);
-        self.write_cmd_with_data(GC9A01A_COLMOD, &[0x05]);
-        self.write_cmd_with_data(0x90, &[0x08, 0x08, 0x08, 0x08]);
-        self.write_cmd_with_data(0xBD, &[0x06]);
-        self.write_cmd_with_data(0xBA, &[0x01]);
-        self.write_cmd_with_data(0xBC, &[0x00]);
-        self.write_cmd_with_data(0xFF, &[0x60, 0x01, 0x04]);
-        self.write_cmd_with_data(GC9A01A1_POWER2, &[0x14]);
-        self.write_cmd_with_data(GC9A01A1_POWER3, &[0x14]);
-        self.write_cmd_with_data(GC9A01A1_POWER4, &[0x25]);
-        self.write_cmd_with_data(0xBE, &[0x11]);
-        self.write_cmd_with_data(0xE1, &[0x10, 0x0e]);
-        self.write_cmd_with_data(0xDF, &[0x21, 0x0c, 0x02]);
+        // Power control A
+        self.write_cmd_with_data(0xCB, &[0x39, 0x2C, 0x00, 0x34, 0x02]);
 
-        // Gamma settings
-        self.write_cmd_with_data(GC9A01A_GAMMA1, &[0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]);
-        self.write_cmd_with_data(GC9A01A_GAMMA2, &[0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]);
-        self.write_cmd_with_data(GC9A01A_GAMMA3, &[0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]);
-        self.write_cmd_with_data(GC9A01A_GAMMA4, &[0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]);
+        // Power control B
+        self.write_cmd_with_data(0xCF, &[0x00, 0xC1, 0x30]);
 
-        self.write_cmd_with_data(0xED, &[0x1B, 0x0B]);
-        self.write_cmd_with_data(0xAE, &[0x77]);
-        self.write_cmd_with_data(0xCD, &[0x63]);
+        // Driver timing control A
+        self.write_cmd_with_data(0xE8, &[0x85, 0x00, 0x78]);
+
+        // Driver timing control B
+        self.write_cmd_with_data(0xEA, &[0x00, 0x00]);
+
+        // Power on sequence control
+        self.write_cmd_with_data(0xED, &[0x64, 0x03, 0x12, 0x81]);
+
+        // Pump ratio control
+        self.write_cmd_with_data(0xF7, &[0x20]);
+
+        // Power control 1
+        self.write_cmd_with_data(ILI9341_PWCTR1, &[0x23]);
+
+        // Power control 2
+        self.write_cmd_with_data(ILI9341_PWCTR2, &[0x10]);
+
+        // VCOM control 1
+        self.write_cmd_with_data(ILI9341_VMCTR1, &[0x3e, 0x28]);
+
+        // VCOM control 2
+        self.write_cmd_with_data(ILI9341_VMCTR2, &[0x86]);
+
+        // Memory Access Control
+        self.write_cmd_with_data(ILI9341_MADCTL, &[0x48]);
+
+        // Pixel Format
+        self.write_cmd_with_data(ILI9341_PIXFMT, &[0x55]);
+
+        // Frame Rate Control
+        self.write_cmd_with_data(ILI9341_FRMCTR1, &[0x00, 0x18]);
+
+        // Display Function Control
+        self.write_cmd_with_data(ILI9341_DFUNCTR, &[0x08, 0x82, 0x27]);
+
+        // 3Gamma Function Disable
+        self.write_cmd_with_data(0xF2, &[0x00]);
+
+        // Gamma curve selected
+        self.write_cmd_with_data(ILI9341_GAMMASET, &[0x01]);
+
+        // Positive Gamma Correction
         self.write_cmd_with_data(
-            0x70,
-            &[0x07, 0x07, 0x04, 0x0E, 0x0F, 0x09, 0x07, 0x08, 0x03],
-        );
-        self.write_cmd_with_data(GC9A01A_FRAMERATE, &[0x34]);
-
-        // More configuration data...
-        self.write_cmd_with_data(
-            0x62,
+            ILI9341_GMCTRP1,
             &[
-                0x18, 0x0D, 0x71, 0xED, 0x70, 0x70, 0x18, 0x0F, 0x71, 0xEF, 0x70, 0x70,
+                0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09,
+                0x00,
             ],
         );
+
+        // Negative Gamma Correction
         self.write_cmd_with_data(
-            0x63,
+            ILI9341_GMCTRN1,
             &[
-                0x18, 0x11, 0x71, 0xF1, 0x70, 0x70, 0x18, 0x13, 0x71, 0xF3, 0x70, 0x70,
+                0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36,
+                0x0F,
             ],
         );
 
-        self.write_cmd_with_data(GC9A01A_TEON, &[0x00]);
+        // Sleep out
+        self.write_cmd(ILI9341_SLPOUT);
+        self.delay_ms(120);
 
-        // Final initialization sequence
-        self.write_cmd(GC9A01A_INVON);
-        self.delay_ms(120);
-        self.write_cmd(GC9A01A_SLPOUT);
-        self.delay_ms(120);
-        self.write_cmd(GC9A01A_DISPON);
+        // Display on
+        self.write_cmd(ILI9341_DISPON);
         self.delay_ms(20);
     }
 
@@ -182,19 +195,19 @@ impl Display {
         self.orientation = orientation;
         match orientation {
             DisplayOrientation::Landscape => {
-                self.write_cmd_with_data(GC9A01A_CASET, &[0x00, 0x00, 0x00, 0xf0]);
-                self.write_cmd_with_data(GC9A01A_RASET, &[0x00, 0x00, 0x00, 0xf0]);
-                self.write_cmd_with_data(GC9A01A_MADCTL, &[MADCTL_MV | MADCTL_BGR]);
+                self.write_cmd_with_data(ILI9341_CASET, &[0x00, 0x00, 0x01, 0x3F]); // 0-319
+                self.write_cmd_with_data(ILI9341_PASET, &[0x00, 0x00, 0x00, 0xEF]); // 0-239
+                self.write_cmd_with_data(ILI9341_MADCTL, &[MADCTL_MV | MADCTL_BGR]);
             }
             DisplayOrientation::Portrait => {
-                self.write_cmd_with_data(GC9A01A_CASET, &[0x00, 0x00, 0x00, 0xf0]);
-                self.write_cmd_with_data(GC9A01A_RASET, &[0x00, 0x00, 0x00, 0xf0]);
-                self.write_cmd_with_data(GC9A01A_MADCTL, &[MADCTL_MX | MADCTL_BGR]);
+                self.write_cmd_with_data(ILI9341_CASET, &[0x00, 0x00, 0x00, 0xEF]); // 0-239
+                self.write_cmd_with_data(ILI9341_PASET, &[0x00, 0x00, 0x01, 0x3F]); // 0-319
+                self.write_cmd_with_data(ILI9341_MADCTL, &[MADCTL_MX | MADCTL_BGR]);
             }
         }
     }
 
-    // Draw image function (ported from gc9a01a_draw_image)
+    // Draw image function (LTDC Layer 1 framebuffer approach for STM32F429ZI Discovery)
     pub fn draw_image(&self, x: Coord, w: u32, y: Coord, h: u32, image_data: &[u16]) {
         let x: u16 = x.try_into().expect("X co-ordinate is out of range");
         let y: u16 = y.try_into().expect("y co-ordinate is out of range");
@@ -218,15 +231,63 @@ impl Display {
             h
         };
 
-        self.set_address_window(x, x + w - 1, y, y + h - 1);
+        // Write directly to LTDC Layer 2 framebuffer
+        self.draw_image_to_framebuffer(x as u32, y as u32, w as u32, h as u32, image_data);
+    }
 
-        // Send image data
-        for pixel in image_data.iter().take((w as u32 * h as u32) as usize) {
-            let color_high = (*pixel >> 8) as u8;
-            let color_low = *pixel as u8;
-            self.write_8bit(color_high);
-            self.write_8bit(color_low);
+    // Helper function to draw image to LTDC Layer 1 framebuffer
+    fn draw_image_to_framebuffer(&self, x: u32, y: u32, w: u32, h: u32, image_data: &[u16]) {
+        use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
+        use core::slice;
+
+        // Get Layer 1 framebuffer as ARGB8888 buffer
+        let framebuffer = unsafe {
+            slice::from_raw_parts_mut(
+                LAYER1_BASE as *mut u32,
+                (LCD_WIDTH * crate::lcd::LCD_HEIGHT) as usize,
+            )
+        };
+
+        let mut pixel_idx = 0;
+
+        for row in 0..h {
+            for col in 0..w {
+                if pixel_idx >= image_data.len() {
+                    break;
+                }
+
+                let pixel_x = x + col;
+                let pixel_y = y + row;
+
+                // Bounds check
+                if pixel_x >= LCD_WIDTH || pixel_y >= crate::lcd::LCD_HEIGHT {
+                    continue;
+                }
+
+                // Convert RGB565 to ARGB8888
+                let rgb565 = image_data[pixel_idx];
+                let r = ((rgb565 >> 11) & 0x1F) as u32;
+                let g = ((rgb565 >> 5) & 0x3F) as u32;
+                let b = (rgb565 & 0x1F) as u32;
+
+                // Scale to 8-bit values
+                let r8 = (r * 255 / 31) as u32;
+                let g8 = (g * 255 / 63) as u32;
+                let b8 = (b * 255 / 31) as u32;
+
+                // Create ARGB8888 pixel (fully opaque)
+                let argb8888 = 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
+
+                // Write to framebuffer
+                let fb_index = (pixel_y * LCD_WIDTH + pixel_x) as usize;
+                framebuffer[fb_index] = argb8888;
+
+                pixel_idx += 1;
+            }
         }
+
+        // Memory barrier to ensure writes complete
+        cortex_m::asm::dsb();
     }
 
     // Fill screen with color (ported from gc9a01a_fill_screen)
@@ -270,9 +331,18 @@ impl Display {
         }
     }
 
-    // Write single character (ported from gc9a01a_write_char)
+    // Write single character (LTDC framebuffer approach for STM32F429ZI Discovery)
     fn write_char(&self, x: u16, y: u16, ch: u8, font: FontDef, color: u16, bgcolor: u16) {
-        self.set_address_window(x, x + font.width as u16 - 1, y, y + font.height as u16 - 1);
+        use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
+        use core::slice;
+
+        // Get Layer 1 framebuffer as ARGB8888 buffer
+        let framebuffer = unsafe {
+            slice::from_raw_parts_mut(
+                LAYER1_BASE as *mut u32,
+                (LCD_WIDTH * crate::lcd::LCD_HEIGHT) as usize,
+            )
+        };
 
         for i in 0..font.height {
             // Note: In real implementation, would read from font.data
@@ -288,15 +358,40 @@ impl Display {
                 }
             };
 
-            for _j in 0..font.width {
+            for j in 0..font.width {
+                let pixel_x = x as u32 + j as u32;
+                let pixel_y = y as u32 + i as u32;
+
+                // Bounds check
+                if pixel_x >= LCD_WIDTH || pixel_y >= crate::lcd::LCD_HEIGHT {
+                    continue;
+                }
+
                 let pixel_color = if (b & 0x8000) != 0 { color } else { bgcolor };
-                let color_high = (pixel_color >> 8) as u8;
-                let color_low = pixel_color as u8;
-                self.write_8bit(color_high);
-                self.write_8bit(color_low);
+
+                // Convert RGB565 to ARGB8888
+                let r = ((pixel_color >> 11) & 0x1F) as u32;
+                let g = ((pixel_color >> 5) & 0x3F) as u32;
+                let b_val = (pixel_color & 0x1F) as u32;
+
+                // Scale to 8-bit values
+                let r8 = (r * 255 / 31) as u32;
+                let g8 = (g * 255 / 63) as u32;
+                let b8 = (b_val * 255 / 31) as u32;
+
+                // Create ARGB8888 pixel (fully opaque)
+                let argb8888 = 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
+
+                // Write to framebuffer
+                let fb_index = (pixel_y * LCD_WIDTH + pixel_x) as usize;
+                framebuffer[fb_index] = argb8888;
+
                 b <<= 1;
             }
         }
+
+        // Memory barrier to ensure writes complete
+        cortex_m::asm::dsb();
     }
 
     // Draw single pixel (ported from gc9a01a_draw_pixel)
@@ -343,18 +438,18 @@ impl Display {
         }
     }
 
-    // Set address window (ported from gc9a01a_set_address_window)
+    // Set address window (ILI9341 compatible)
     fn set_address_window(&self, x0: u16, x1: u16, y0: u16, y1: u16) {
         // Set column address
-        self.write_cmd(GC9A01A_CASET);
+        self.write_cmd(ILI9341_CASET);
         self.write_data(&[(x0 >> 8) as u8, x0 as u8, (x1 >> 8) as u8, x1 as u8]);
 
         // Set row address
-        self.write_cmd(GC9A01A_RASET);
+        self.write_cmd(ILI9341_PASET);
         self.write_data(&[(y0 >> 8) as u8, y0 as u8, (y1 >> 8) as u8, y1 as u8]);
 
         // Write to RAM command
-        self.write_cmd(GC9A01A_RAMWR);
+        self.write_cmd(ILI9341_RAMWR);
     }
 
     // Low-level command functions (ported from gc9a01a.c)
@@ -391,12 +486,12 @@ impl Display {
         }
     }
 
-    // Invert colors function (ported from gc9a01a_invert_colors)
+    // Invert colors function (ILI9341 compatible)
     pub fn invert_colors(&self, invert: bool) {
         self.write_cmd(if invert {
-            GC9A01A_INVON
+            ILI9341_INVON
         } else {
-            GC9A01A_INVOFF
+            ILI9341_INVOFF
         });
     }
 } // Keep the old function API for backward compatibility during transition

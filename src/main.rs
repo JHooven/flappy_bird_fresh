@@ -55,6 +55,11 @@ fn main() -> ! {
     display::register_driver(&lcd_driver);
     display::init(); // Initialize display module
 
+    // Test display functions - draw a simple test image
+    // This will help verify that draw_image is working with LTDC framebuffer
+    let test_image: [u16; 4] = [0xF800, 0x07E0, 0x001F, 0xFFFF]; // Red, Green, Blue, White
+    display::draw_image_rust(50, 2, 50, 2, &test_image);
+
     let input: DummyInputDevice = DummyInputDevice::new();
     let _game_instance: &mut Game<DummyInputDevice> =
         &mut Game::init(input).expect("Failed to initialize game");
@@ -81,8 +86,11 @@ fn init() -> lcd::LcdDriver {
     sdram::init();
 
     // Setup LTDC and framebuffers
-    draw::layer1_checkerboard();
-    // draw::layer2_sprite();  // Disable layer2 to reduce conflicts
+    // Layer 1 will be used for everything (start screen, game elements)
+    draw::layer1_checkerboard(); // Initialize with checkerboard as base
+
+    // Clear Layer 2 (64x64 layer for small UI elements if needed)
+    draw::clear_layer2();
 
     // Create LCD driver (this will configure LTDC)
     let lcd_driver = lcd::LcdDriver::new();

@@ -71,6 +71,37 @@ fn fill_checkerboard_to(base: u32) {
     cortex_m::asm::isb(); // Instruction Synchronization Barrier
 }
 
+// Clear Layer 1 to fully transparent (for start screen)
+pub fn clear_layer1() {
+    let pixels = (LCD_WIDTH * LCD_HEIGHT) as usize;
+    let buf = unsafe { slice::from_raw_parts_mut(LAYER1_BASE as *mut u32, pixels) };
+    // Clear to fully transparent
+    for p in buf.iter_mut() {
+        *p = 0;
+    }
+
+    // Memory barrier to ensure writes complete
+    cortex_m::asm::dsb();
+}
+
+// Clear Layer 2 to fully transparent (for display functions)
+pub fn clear_layer2() {
+    let pixels = (LAYER2_W * LAYER2_H) as usize;
+    let buf = unsafe { slice::from_raw_parts_mut(LAYER2_BASE as *mut u32, pixels) };
+    // Clear to fully transparent
+    for p in buf.iter_mut() {
+        *p = 0;
+    }
+
+    // Memory barrier to ensure writes complete
+    cortex_m::asm::dsb();
+}
+
+// Put checkerboard pattern on Layer 2 as background
+pub fn layer2_checkerboard() {
+    fill_simple_checkerboard(LAYER2_BASE);
+}
+
 pub fn layer2_sprite() {
     let pixels = (LAYER2_W * LAYER2_H) as usize;
     let buf = unsafe { slice::from_raw_parts_mut(LAYER2_BASE as *mut u32, pixels) };

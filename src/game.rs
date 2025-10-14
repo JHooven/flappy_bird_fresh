@@ -8,6 +8,8 @@ use crate::config::PLAYER_Y_MAX;
 use crate::config::PLAYER_Y_MIN;
 use crate::config::{self, Coord};
 use crate::display;
+use crate::display::DISPLAY_HEIGHT;
+use crate::display::DISPLAY_WIDTH;
 use crate::obstacle;
 use crate::player;
 
@@ -120,7 +122,14 @@ impl<T: InputDevice> Game<T> {
 
     pub fn draw_start_screen() {
         Game::<T>::set_background();
-        display::draw_image(40, 160, 40, 80, assets::GAME_NAME_IMG_DATA.as_ptr());
+        //display::draw_image(40, 160, 40, 80, assets::GAME_NAME_IMG_DATA.as_ptr());
+        display::draw_image(
+            0,
+            DISPLAY_WIDTH,
+            0,
+            DISPLAY_HEIGHT,
+            assets::GAME_NAME_IMG_DATA.as_ptr(),
+        );
         let text = c"Game Starts In";
         display::write_string(0, 120, text.as_ptr(), color::RED, color::BACKGROUND);
     }
