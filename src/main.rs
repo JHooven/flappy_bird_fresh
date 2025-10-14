@@ -55,13 +55,14 @@ fn main() -> ! {
     display::register_driver(&lcd_driver);
     display::init(); // Initialize display module
 
-    let input = DummyInputDevice::new();
-    let _game_instance = Game::init(input).expect("Failed to initialize game");
+    let input: DummyInputDevice = DummyInputDevice::new();
+    let _game_instance: &mut Game<DummyInputDevice> =
+        &mut Game::init(input).expect("Failed to initialize game");
 
     // Minimal test loop - just show checkerboard without game updates
     loop {
-        // _game_instance.update();  // Disable game updates for testing
-        clock::delay_ms(1000); // Very slow for debugging
+        _game_instance.update(); // Disable game updates for testing
+                                 // clock::delay_ms(1000); // Very slow for debugging
     }
 }
 

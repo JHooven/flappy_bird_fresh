@@ -22,7 +22,9 @@ fn get_tick() -> u32 {
     }
 }
 
+#[derive(PartialEq)]
 pub enum GameState {
+    Initializing,
     Start,
     Running,
     End,
@@ -50,7 +52,7 @@ impl<T: InputDevice> Game<T> {
         input_device.init()?;
 
         let game = Game {
-            state: GameState::Start,
+            state: GameState::Initializing,
             score: 0,
             countdown_start_time: 0,
             obstacle: obstacle::Obstacle::init(),
@@ -63,6 +65,10 @@ impl<T: InputDevice> Game<T> {
 
     pub fn update(&mut self) {
         match self.state {
+            GameState::Initializing => {
+                Game::<T>::draw_start_screen();
+                self.state = GameState::Start;
+            }
             GameState::Start => {
                 if self.run_countdown() {
                     // Only set background once when transitioning to running state
