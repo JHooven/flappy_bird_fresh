@@ -248,14 +248,16 @@ impl Display {
             )
         };
 
-        let mut pixel_idx = 0;
+        // Image orientation for STM32F429ZI Discovery board LTDC framebuffer
+        // Mode 2 (vertical flip) is correct for proper text and image orientation
+        // 0: Normal (row, col) - text appears upside down
+        // 1: Horizontal flip (row, w-1-col) - text appears mirrored
+        // 2: Vertical flip (h-1-row, col) - CORRECT orientation ✓
+        // 3: Both flips (h-1-row, w-1-col) - text appears both upside down and mirrored
+        let orientation_mode = 2; // Vertical flip - correct for STM32F429ZI Discovery
 
         for row in 0..h {
             for col in 0..w {
-                if pixel_idx >= image_data.len() {
-                    break;
-                }
-
                 let pixel_x = x + col;
                 let pixel_y = y + row;
 
@@ -264,8 +266,22 @@ impl Display {
                     continue;
                 }
 
+                // Calculate image data index based on orientation mode
+                let (img_row, img_col) = match orientation_mode {
+                    0 => (row, col),                 // Normal
+                    1 => (row, w - 1 - col),         // Horizontal flip
+                    2 => (h - 1 - row, col),         // Vertical flip
+                    3 => (h - 1 - row, w - 1 - col), // Both flips
+                    _ => (row, col),                 // Default to normal
+                };
+                let img_idx = (img_row * w + img_col) as usize;
+
+                if img_idx >= image_data.len() {
+                    continue;
+                }
+
                 // Convert RGB565 to ARGB8888
-                let rgb565 = image_data[pixel_idx];
+                let rgb565 = image_data[img_idx];
                 let r = ((rgb565 >> 11) & 0x1F) as u32;
                 let g = ((rgb565 >> 5) & 0x3F) as u32;
                 let b = (rgb565 & 0x1F) as u32;
@@ -281,8 +297,6 @@ impl Display {
                 // Write to framebuffer
                 let fb_index = (pixel_y * LCD_WIDTH + pixel_x) as usize;
                 framebuffer[fb_index] = argb8888;
-
-                pixel_idx += 1;
             }
         }
 
