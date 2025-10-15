@@ -130,28 +130,15 @@ const MADCTL_MX: u8 = 0x40; // Right to left
 const MADCTL_MV: u8 = 0x20; // Reverse Mode
 const MADCTL_BGR: u8 = 0x08; // Blue-Green-Red pixel order
 
-// Default font definition
-pub static FONT_16X26: FontDef = FontDef {
-    width: 16,
-    height: 26,
-    data: core::ptr::null(), // Empty data for stub implementation
-};
+// Default font definition using actual font data
+pub static FONT_11X18: crate::assets::fonts::Font = crate::assets::fonts::Font7x10;
 
 pub struct Display {
     lcd_driver: LcdDriver,
     orientation: DisplayOrientation,
 }
 
-#[derive(Copy, Clone)]
-
-pub struct FontDef {
-    width: u8,
-    height: u8,
-    data: *const u8, // Keep as raw pointer but make it Sync
-}
-
-// Safe wrapper for FontDef that can be shared between threads
-unsafe impl Sync for FontDef {}
+// FontDef removed - now using crate::assets::fonts::Font instead
 
 impl Display {
     pub fn new() -> Self {
@@ -480,7 +467,7 @@ impl Display {
 
     // Fill screen with color (ported from gc9a01a_fill_screen)
     pub fn set_background_color(&self, bg_color: u16) {
-        self.fill_rect(0, DISPLAY_WIDTH as u16, 0, DISPLAY_HEIGHT as u16, bg_color);
+        self.fill_rect(0, GAME_WIDTH as u16, 0, GAME_HEIGHT as u16, bg_color);
     }
 
     // Draw rectangle (ported from gc9a01a_fill_rect)
@@ -495,16 +482,18 @@ impl Display {
 
     // Write string function (ported from gc9a01a_write_string)
     pub fn write_string(&self, x: Coord, y: Coord, c_str: &ffi::CStr, color: u16, bgcolor: u16) {
+        use crate::config::{GAME_HEIGHT, GAME_WIDTH};
+
         let mut x: u16 = x.try_into().expect("X co-ordinate is out of range");
         let mut y: u16 = y.try_into().expect("y co-ordinate is out of range");
 
         if let Ok(rust_str) = c_str.to_str() {
             for ch in rust_str.chars() {
-                // Handle line wrapping
-                if x + FONT_16X26.width as u16 >= DISPLAY_WIDTH as u16 {
+                // Handle line wrapping using game coordinates
+                if x + FONT_11X18.width as u16 >= GAME_WIDTH as u16 {
                     x = 0;
-                    y += FONT_16X26.height as u16;
-                    if y + FONT_16X26.height as u16 >= DISPLAY_HEIGHT as u16 {
+                    y += FONT_11X18.height as u16;
+                    if y + FONT_11X18.height as u16 >= GAME_HEIGHT as u16 {
                         break;
                     }
 
@@ -513,14 +502,22 @@ impl Display {
                     }
                 }
 
-                self.write_char(x, y, ch as u8, FONT_16X26, color, bgcolor);
-                x += FONT_16X26.width as u16;
+                self.write_char(x, y, ch as u8, FONT_11X18, color, bgcolor);
+                x += FONT_11X18.width as u16;
             }
         }
     }
 
     // Write single character (LTDC framebuffer approach for STM32F429ZI Discovery)
-    fn write_char(&self, x: u16, y: u16, ch: u8, font: FontDef, color: u16, bgcolor: u16) {
+    fn write_char(
+        &self,
+        x: u16,
+        y: u16,
+        ch: u8,
+        font: crate::assets::fonts::Font,
+        color: u16,
+        bgcolor: u16,
+    ) {
         use crate::config::{GAME_HEIGHT, GAME_WIDTH};
         use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
         use core::slice;
@@ -534,12 +531,14 @@ impl Display {
         };
 
         for i in 0..font.height {
-            // Note: In real implementation, would read from font.data
-            // For now, using a simple pattern as font data is null
-            let mut b = if !font.data.is_null() {
-                unsafe { *font.data.add(((ch - 32) * font.height + i) as usize) as u16 }
+            // Get font data for this character row
+            let char_index = (ch - 32) as usize; // ASCII printable characters start at 32
+            let row_index = char_index * font.height as usize + i as usize;
+
+            let b = if row_index < font.data.len() {
+                font.data[row_index]
             } else {
-                // Simple pattern for demonstration when font data is null
+                // Fallback pattern if index is out of bounds
                 if i < font.height / 2 {
                     0xFF00
                 } else {
@@ -566,7 +565,13 @@ impl Display {
                     continue;
                 }
 
-                let pixel_color = if (b & 0x8000) != 0 { color } else { bgcolor };
+                // Check if this pixel should be drawn (bit test from MSB, left to right)
+                let bit_position = 15 - j; // For 16-bit font: bit 15 = leftmost, bit 0 = rightmost
+                let pixel_color = if (b & (1 << bit_position)) != 0 {
+                    color
+                } else {
+                    bgcolor
+                };
 
                 // Convert RGB565 to ARGB8888
                 let r = ((pixel_color >> 11) & 0x1F) as u32;
@@ -584,8 +589,6 @@ impl Display {
                 // Write to framebuffer using LCD coordinates
                 let fb_index = (lcd_y * LCD_WIDTH + lcd_x) as usize;
                 framebuffer[fb_index] = argb8888;
-
-                b <<= 1;
             }
         }
 
@@ -608,33 +611,77 @@ impl Display {
 
     // Fill rectangle helper (ported from gc9a01a_fill_rect)
     fn fill_rect(&self, x: u16, w: u16, y: u16, h: u16, color: u16) {
-        if x >= DISPLAY_WIDTH as u16 || y >= DISPLAY_HEIGHT as u16 {
+        use crate::config::{GAME_HEIGHT, GAME_WIDTH};
+        use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
+        use core::slice;
+
+        // Bounds checking using game coordinates
+        if x >= GAME_WIDTH as u16 || y >= GAME_HEIGHT as u16 {
             return;
         }
 
-        let w = if (x + w - 1) >= DISPLAY_WIDTH as u16 {
-            DISPLAY_WIDTH as u16 - x
+        let w = if (x + w - 1) >= GAME_WIDTH as u16 {
+            GAME_WIDTH as u16 - x
         } else {
             w
         };
 
-        let h = if (y + h - 1) >= DISPLAY_HEIGHT as u16 {
-            DISPLAY_HEIGHT as u16 - y
+        let h = if (y + h - 1) >= GAME_HEIGHT as u16 {
+            GAME_HEIGHT as u16 - y
         } else {
             h
         };
 
-        self.set_address_window(x, x + w - 1, y, y + h - 1);
+        // Get Layer 1 framebuffer as ARGB8888 buffer
+        let framebuffer = unsafe {
+            slice::from_raw_parts_mut(
+                LAYER1_BASE as *mut u32,
+                (LCD_WIDTH * crate::lcd::LCD_HEIGHT) as usize,
+            )
+        };
 
-        let color_high = (color >> 8) as u8;
-        let color_low = color as u8;
+        // Convert RGB565 to ARGB8888
+        let r = ((color >> 11) & 0x1F) as u32;
+        let g = ((color >> 5) & 0x3F) as u32;
+        let b = (color & 0x1F) as u32;
 
-        for _row in 0..h {
-            for _col in 0..w {
-                self.write_8bit(color_high);
-                self.write_8bit(color_low);
+        // Scale to 8-bit values
+        let r8 = (r * 255 / 31) as u32;
+        let g8 = (g * 255 / 63) as u32;
+        let b8 = (b * 255 / 31) as u32;
+
+        // Create ARGB8888 pixel (fully opaque)
+        let argb8888 = 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
+
+        // Fill rectangle using coordinate transformation
+        for row in 0..h {
+            for col in 0..w {
+                // Game coordinates
+                let game_x = x as u32 + col as u32;
+                let game_y = y as u32 + row as u32;
+
+                // Bounds check in game coordinates
+                if game_x >= GAME_WIDTH || game_y >= GAME_HEIGHT {
+                    continue;
+                }
+
+                // Transform from game coordinates to LCD coordinates (90° CCW rotation)
+                let lcd_x = game_y;
+                let lcd_y = GAME_WIDTH - 1 - game_x;
+
+                // Bounds check in LCD coordinates
+                if lcd_x >= LCD_WIDTH || lcd_y >= crate::lcd::LCD_HEIGHT {
+                    continue;
+                }
+
+                // Write to framebuffer using LCD coordinates
+                let fb_index = (lcd_y * LCD_WIDTH + lcd_x) as usize;
+                framebuffer[fb_index] = argb8888;
             }
         }
+
+        // Memory barrier to ensure writes complete
+        cortex_m::asm::dsb();
     }
 
     // Set address window (ILI9341 compatible)

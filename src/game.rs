@@ -153,6 +153,10 @@ impl<T: InputDevice> Game<T> {
             FLIP_HORIZONTAL,
             FLIP_VERTICAL,
         );
+
+        // Corner coordinates test - now ready to debug separately
+        Game::<T>::draw_corner_coordinates();
+
         let text = c"Game Starts In";
         display::write_string(0, 120, text.as_ptr(), color::RED, color::BACKGROUND);
     }
@@ -312,6 +316,58 @@ impl<T: InputDevice> Game<T> {
         //     _ => false,
         // }
         matches!(self.state, GameState::Halt)
+    }
+
+    // Test function to draw coordinate information in each corner
+    fn draw_corner_coordinates() {
+        use crate::config::{GAME_HEIGHT, GAME_WIDTH};
+
+        // Draw small colored rectangles and coordinate text in each corner
+
+        // Top-left corner (0,0) - Test coordinate bounds
+        display::draw_rect_angle(0, 60, 0, 20, color::RED);
+        let text_tl = c"(0,0)";
+        display::write_string(5, 5, text_tl.as_ptr(), color::WHITE, color::RED);
+
+        // Top-right corner (319,0)
+        display::draw_rect_angle(GAME_WIDTH as i32 - 70, 70, 0, 20, color::WHITE);
+        let text_tr = c"(319,0)";
+        display::write_string(
+            GAME_WIDTH as i32 - 100,
+            5,
+            text_tr.as_ptr(),
+            color::BLACK,
+            color::WHITE,
+        );
+
+        // Bottom-left corner (0,239)
+
+        display::draw_rect_angle(0, 70, GAME_HEIGHT as i32 - 20, 20, color::BLACK);
+        let text_bl = c"(0,239)";
+        display::write_string(
+            5,
+            GAME_HEIGHT as i32 - 15,
+            text_bl.as_ptr(),
+            color::WHITE,
+            color::BLACK,
+        );
+
+        // Bottom-right corner (319,239)
+        display::draw_rect_angle(
+            GAME_WIDTH as i32 - 80,
+            80,
+            GAME_HEIGHT as i32 - 20,
+            20,
+            color::SCORE,
+        );
+        let text_br = c"(319,239)";
+        display::write_string(
+            GAME_WIDTH as i32 - 75,
+            GAME_HEIGHT as i32 - 15,
+            text_br.as_ptr(),
+            color::WHITE,
+            color::SCORE,
+        );
     }
 }
 
