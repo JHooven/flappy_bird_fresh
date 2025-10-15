@@ -14,6 +14,77 @@ pub enum DisplayOrientation {
     Landscape,
 }
 
+// Image rotation options (can be combined with flips)
+#[derive(Copy, Clone)]
+pub enum ImageRotation {
+    None,               // No rotation
+    Clockwise90,        // 90° clockwise rotation
+    CounterClockwise90, // 90° counter-clockwise rotation
+    Rotate180,          // 180° rotation
+}
+
+// Image flip options (can be combined with rotation)
+#[derive(Copy, Clone)]
+pub struct ImageFlip {
+    pub horizontal: bool, // Flip horizontally (mirror left-right)
+    pub vertical: bool,   // Flip vertically (mirror top-bottom)
+}
+
+impl ImageFlip {
+    pub const NONE: ImageFlip = ImageFlip {
+        horizontal: false,
+        vertical: false,
+    };
+    pub const HORIZONTAL: ImageFlip = ImageFlip {
+        horizontal: true,
+        vertical: false,
+    };
+    pub const VERTICAL: ImageFlip = ImageFlip {
+        horizontal: false,
+        vertical: true,
+    };
+    pub const BOTH: ImageFlip = ImageFlip {
+        horizontal: true,
+        vertical: true,
+    };
+}
+
+// Image transformation combines rotation and flip
+#[derive(Copy, Clone)]
+pub struct ImageTransform {
+    pub rotation: ImageRotation,
+    pub flip: ImageFlip,
+}
+
+impl ImageTransform {
+    pub const NONE: ImageTransform = ImageTransform {
+        rotation: ImageRotation::None,
+        flip: ImageFlip::NONE,
+    };
+    pub const FLIP_H: ImageTransform = ImageTransform {
+        rotation: ImageRotation::None,
+        flip: ImageFlip::HORIZONTAL,
+    };
+    pub const FLIP_V: ImageTransform = ImageTransform {
+        rotation: ImageRotation::None,
+        flip: ImageFlip::VERTICAL,
+    };
+    pub const CW90_FLIP_H: ImageTransform = ImageTransform {
+        rotation: ImageRotation::Clockwise90,
+        flip: ImageFlip::HORIZONTAL,
+    };
+}
+
+// Legacy constants for backward compatibility
+pub const ROTATION_NONE: u8 = 0;
+pub const ROTATION_CLOCKWISE_90: u8 = 1;
+pub const ROTATION_COUNTER_CLOCKWISE_90: u8 = 2;
+pub const ROTATION_180: u8 = 3;
+pub const ROTATION_FLIP_HORIZONTAL: u8 = 4;
+pub const ROTATION_FLIP_VERTICAL: u8 = 5;
+pub const ROTATION_FLIP_BOTH: u8 = 6;
+pub const ROTATION_CLOCKWISE_90_FLIP_H: u8 = 7;
+
 // ILI9341 LCD display constants for STM32F429ZI Discovery board
 pub const DISPLAY_WIDTH: u32 = 240;
 pub const DISPLAY_HEIGHT: u32 = 320;
@@ -208,7 +279,50 @@ impl Display {
     }
 
     // Draw image function (LTDC Layer 1 framebuffer approach for STM32F429ZI Discovery)
-    pub fn draw_image(&self, x: Coord, w: u32, y: Coord, h: u32, image_data: &[u16]) {
+    /*pub fn draw_image(&self, x: Coord, w: u32, y: Coord, h: u32, image_data: &[u16]) {
+            let x: u16 = x.try_into().expect("X co-ordinate is out of range");
+            let y: u16 = y.try_into().expect("y co-ordinate is out of range");
+            let w: u16 = w.try_into().expect("width out of range");
+            let h: u16 = h.try_into().expect("height out of range");
+
+            // Bounds checking
+            if x >= DISPLAY_WIDTH as u16 || y >= DISPLAY_HEIGHT as u16 {
+                return;
+            }
+
+            let w = if (x + w - 1) >= DISPLAY_WIDTH as u16 {
+                DISPLAY_WIDTH as u16 - x
+            } else {
+                w
+            };
+
+            let h = if (y + h - 1) >= DISPLAY_HEIGHT as u16 {
+                DISPLAY_HEIGHT as u16 - y
+            } else {
+                h
+            };
+
+            // Write directly to LTDC Layer 2 framebuffer
+            self.draw_image_to_framebuffer(
+                x as u32,
+                y as u32,
+                w as u32,
+                h as u32,
+                image_data,
+                ImageTransform::NONE,
+            );
+        }
+    */
+    // Draw image with transform support (rotation + flip)
+    pub fn draw_image_transformed(
+        &self,
+        x: Coord,
+        w: u32,
+        y: Coord,
+        h: u32,
+        image_data: &[u16],
+        transform: ImageTransform,
+    ) {
         let x: u16 = x.try_into().expect("X co-ordinate is out of range");
         let y: u16 = y.try_into().expect("y co-ordinate is out of range");
         let w: u16 = w.try_into().expect("width out of range");
@@ -231,12 +345,62 @@ impl Display {
             h
         };
 
-        // Write directly to LTDC Layer 2 framebuffer
-        self.draw_image_to_framebuffer(x as u32, y as u32, w as u32, h as u32, image_data);
+        // Write directly to LTDC Layer 2 framebuffer with transform
+        self.draw_image_to_framebuffer(
+            x as u32, y as u32, w as u32, h as u32, image_data, transform,
+        );
     }
 
-    // Helper function to draw image to LTDC Layer 1 framebuffer
-    fn draw_image_to_framebuffer(&self, x: u32, y: u32, w: u32, h: u32, image_data: &[u16]) {
+    // Convenience function with separate rotation and flip parameters
+    pub fn draw_image_rotated_flipped(
+        &self,
+        x: Coord,
+        w: u32,
+        y: Coord,
+        h: u32,
+        image_data: &[u16],
+        rotation: ImageRotation,
+        flip_h: bool,
+        flip_v: bool,
+    ) {
+        let transform = ImageTransform {
+            rotation,
+            flip: ImageFlip {
+                horizontal: flip_h,
+                vertical: flip_v,
+            },
+        };
+        self.draw_image_transformed(x, w, y, h, image_data, transform);
+    }
+
+    // Backward compatibility function
+    pub fn draw_image_rotated(
+        &self,
+        x: Coord,
+        w: u32,
+        y: Coord,
+        h: u32,
+        image_data: &[u16],
+        rotation: ImageRotation,
+    ) {
+        let transform = ImageTransform {
+            rotation,
+            flip: ImageFlip::NONE,
+        };
+        self.draw_image_transformed(x, w, y, h, image_data, transform);
+    }
+
+    // Helper function to draw image to LTDC Layer 1 framebuffer with rotation and flip support
+    fn draw_image_to_framebuffer(
+        &self,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+        image_data: &[u16],
+        transform: ImageTransform,
+    ) {
+        use crate::config::{GAME_HEIGHT, GAME_WIDTH};
         use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
         use core::slice;
 
@@ -248,32 +412,42 @@ impl Display {
             )
         };
 
-        // Image orientation for STM32F429ZI Discovery board LTDC framebuffer
-        // Mode 2 (vertical flip) is correct for proper text and image orientation
-        // 0: Normal (row, col) - text appears upside down
-        // 1: Horizontal flip (row, w-1-col) - text appears mirrored
-        // 2: Vertical flip (h-1-row, col) - CORRECT orientation ✓
-        // 3: Both flips (h-1-row, w-1-col) - text appears both upside down and mirrored
-        let orientation_mode = 2; // Vertical flip - correct for STM32F429ZI Discovery
-
         for row in 0..h {
             for col in 0..w {
-                let pixel_x = x + col;
-                let pixel_y = y + row;
+                // Game coordinates (landscape)
+                let game_x = x + col;
+                let game_y = y + row;
 
-                // Bounds check
-                if pixel_x >= LCD_WIDTH || pixel_y >= crate::lcd::LCD_HEIGHT {
+                // Bounds check in game coordinates
+                if game_x >= GAME_WIDTH || game_y >= GAME_HEIGHT {
                     continue;
                 }
 
-                // Calculate image data index based on orientation mode
-                let (img_row, img_col) = match orientation_mode {
-                    0 => (row, col),                 // Normal
-                    1 => (row, w - 1 - col),         // Horizontal flip
-                    2 => (h - 1 - row, col),         // Vertical flip
-                    3 => (h - 1 - row, w - 1 - col), // Both flips
-                    _ => (row, col),                 // Default to normal
+                // Transform from game coordinates (320x240 landscape) to LCD coordinates (240x320 portrait)
+                // 90° counter-clockwise rotation: game_x,game_y → lcd_x=game_y, lcd_y=(GAME_WIDTH-1-game_x)
+                let lcd_x = game_y;
+                let lcd_y = GAME_WIDTH - 1 - game_x;
+
+                // Bounds check in LCD coordinates
+                if lcd_x >= LCD_WIDTH || lcd_y >= crate::lcd::LCD_HEIGHT {
+                    continue;
+                }
+
+                // Apply transformation: first rotation, then flip
+                let (mut img_row, mut img_col) = match transform.rotation {
+                    ImageRotation::None => (row, col),
+                    ImageRotation::Clockwise90 => (w - 1 - col, row),
+                    ImageRotation::CounterClockwise90 => (col, h - 1 - row),
+                    ImageRotation::Rotate180 => (h - 1 - row, w - 1 - col),
                 };
+
+                // Apply flips
+                if transform.flip.horizontal {
+                    img_col = w - 1 - img_col;
+                }
+                if transform.flip.vertical {
+                    img_row = h - 1 - img_row;
+                }
                 let img_idx = (img_row * w + img_col) as usize;
 
                 if img_idx >= image_data.len() {
@@ -294,8 +468,8 @@ impl Display {
                 // Create ARGB8888 pixel (fully opaque)
                 let argb8888 = 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
 
-                // Write to framebuffer
-                let fb_index = (pixel_y * LCD_WIDTH + pixel_x) as usize;
+                // Write to framebuffer using LCD coordinates
+                let fb_index = (lcd_y * LCD_WIDTH + lcd_x) as usize;
                 framebuffer[fb_index] = argb8888;
             }
         }
@@ -347,6 +521,7 @@ impl Display {
 
     // Write single character (LTDC framebuffer approach for STM32F429ZI Discovery)
     fn write_char(&self, x: u16, y: u16, ch: u8, font: FontDef, color: u16, bgcolor: u16) {
+        use crate::config::{GAME_HEIGHT, GAME_WIDTH};
         use crate::lcd::{LAYER1_BASE, LCD_WIDTH};
         use core::slice;
 
@@ -373,11 +548,21 @@ impl Display {
             };
 
             for j in 0..font.width {
-                let pixel_x = x as u32 + j as u32;
-                let pixel_y = y as u32 + i as u32;
+                // Game coordinates (landscape)
+                let game_x = x as u32 + j as u32;
+                let game_y = y as u32 + i as u32;
 
-                // Bounds check
-                if pixel_x >= LCD_WIDTH || pixel_y >= crate::lcd::LCD_HEIGHT {
+                // Bounds check in game coordinates
+                if game_x >= GAME_WIDTH || game_y >= GAME_HEIGHT {
+                    continue;
+                }
+
+                // Transform from game coordinates to LCD coordinates (90° CCW rotation)
+                let lcd_x = game_y;
+                let lcd_y = GAME_WIDTH - 1 - game_x;
+
+                // Bounds check in LCD coordinates
+                if lcd_x >= LCD_WIDTH || lcd_y >= crate::lcd::LCD_HEIGHT {
                     continue;
                 }
 
@@ -396,8 +581,8 @@ impl Display {
                 // Create ARGB8888 pixel (fully opaque)
                 let argb8888 = 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
 
-                // Write to framebuffer
-                let fb_index = (pixel_y * LCD_WIDTH + pixel_x) as usize;
+                // Write to framebuffer using LCD coordinates
+                let fb_index = (lcd_y * LCD_WIDTH + lcd_x) as usize;
                 framebuffer[fb_index] = argb8888;
 
                 b <<= 1;
@@ -534,10 +719,71 @@ pub extern "C" fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn draw_image(x: Coord, w: u32, y: Coord, h: u32, image_data: *const u16) {
+/*pub fn draw_image(x: Coord, w: u32, y: Coord, h: u32, image_data: *const u16) {
     let image_data = unsafe { core::slice::from_raw_parts(image_data, (w * h) as usize) };
     let display = get_display();
     display.draw_image(x, w, y, h, image_data);
+}
+*/
+#[no_mangle]
+pub fn draw_image_rotated(
+    x: Coord,
+    w: u32,
+    y: Coord,
+    h: u32,
+    image_data: *const u16,
+    rotation: u8,
+) {
+    let image_data = unsafe { core::slice::from_raw_parts(image_data, (w * h) as usize) };
+    let transform = match rotation {
+        0 => ImageTransform::NONE, // No rotation, no flip
+        1 => ImageTransform {
+            rotation: ImageRotation::Clockwise90,
+            flip: ImageFlip::NONE,
+        },
+        2 => ImageTransform {
+            rotation: ImageRotation::CounterClockwise90,
+            flip: ImageFlip::NONE,
+        },
+        3 => ImageTransform {
+            rotation: ImageRotation::Rotate180,
+            flip: ImageFlip::NONE,
+        },
+        4 => ImageTransform::FLIP_H, // Horizontal flip only
+        5 => ImageTransform::FLIP_V, // Vertical flip only
+        6 => ImageTransform {
+            rotation: ImageRotation::None,
+            flip: ImageFlip::BOTH,
+        },
+        7 => ImageTransform::CW90_FLIP_H, // 90° CW + horizontal flip
+        _ => ImageTransform::NONE,
+    };
+    let display = get_display();
+    display.draw_image_transformed(x, w, y, h, image_data, transform);
+}
+
+// New C-style function with separate rotation and flip parameters
+#[no_mangle]
+pub fn draw_image_rotated_flipped(
+    x: Coord,
+    w: u32,
+    y: Coord,
+    h: u32,
+    image_data: *const u16,
+    rotation: u8,
+    flip_h: bool,
+    flip_v: bool,
+) {
+    let image_data = unsafe { core::slice::from_raw_parts(image_data, (w * h) as usize) };
+    let img_rotation = match rotation {
+        0 => ImageRotation::None,
+        1 => ImageRotation::Clockwise90,
+        2 => ImageRotation::CounterClockwise90,
+        3 => ImageRotation::Rotate180,
+        _ => ImageRotation::None,
+    };
+    let display = get_display();
+    display.draw_image_rotated_flipped(x, w, y, h, image_data, img_rotation, flip_h, flip_v);
 }
 
 #[no_mangle]
@@ -560,9 +806,50 @@ pub extern "C" fn write_string(x: Coord, y: Coord, c_str: *const c_char, color: 
 }
 
 // Rust-friendly wrapper functions that don't require extern "C"
-pub fn draw_image_rust(x: Coord, w: u32, y: Coord, h: u32, image_data: &[u16]) {
+/*pub fn draw_image_rust(x: Coord, w: u32, y: Coord, h: u32, image_data: &[u16]) {
     let display = get_display();
     display.draw_image(x, w, y, h, image_data);
+}
+*/
+
+pub fn draw_image_rotated_rust(
+    x: Coord,
+    w: u32,
+    y: Coord,
+    h: u32,
+    image_data: &[u16],
+    rotation: ImageRotation,
+) {
+    let display = get_display();
+    display.draw_image_rotated(x, w, y, h, image_data, rotation);
+}
+
+// New Rust wrapper with separate rotation and flip
+pub fn draw_image_rotated_flipped_rust(
+    x: Coord,
+    w: u32,
+    y: Coord,
+    h: u32,
+    image_data: &[u16],
+    rotation: ImageRotation,
+    flip_h: bool,
+    flip_v: bool,
+) {
+    let display = get_display();
+    display.draw_image_rotated_flipped(x, w, y, h, image_data, rotation, flip_h, flip_v);
+}
+
+// New Rust wrapper with ImageTransform
+pub fn draw_image_transformed_rust(
+    x: Coord,
+    w: u32,
+    y: Coord,
+    h: u32,
+    image_data: &[u16],
+    transform: ImageTransform,
+) {
+    let display = get_display();
+    display.draw_image_transformed(x, w, y, h, image_data, transform);
 }
 
 pub fn set_background_color_rust(bg_color: u16) {

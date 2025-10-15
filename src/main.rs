@@ -60,7 +60,16 @@ fn main() -> ! {
     // Test display functions - draw a simple test image
     // This will help verify that draw_image is working with LTDC framebuffer
     let test_image: [u16; 4] = [0xF800, 0x07E0, 0x001F, 0xFFFF]; // Red, Green, Blue, White
-    display::draw_image_rust(50, 2, 50, 2, &test_image);
+    display::draw_image_rotated_flipped_rust(
+        50,
+        2,
+        50,
+        2,
+        &test_image,
+        crate::display::ImageRotation::None,
+        false,
+        false,
+    );
 
     let input: Mpu6050InputDevice = Mpu6050InputDevice::new();
     let _game_instance: &mut Game<Mpu6050InputDevice> =

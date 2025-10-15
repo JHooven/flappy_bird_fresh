@@ -33,12 +33,15 @@ impl Player {
     }
 
     fn draw(&self) {
-        display::draw_image(
+        display::draw_image_rotated_flipped(
             self.x,
             self.w,
             self.y,
             self.h,
             assets::BIRD_IMG_DATA.as_ptr(),
+            0,
+            false,
+            false,
         );
     }
 

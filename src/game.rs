@@ -117,18 +117,41 @@ impl<T: InputDevice> Game<T> {
 
     pub fn draw_game_over_screen() {
         Game::<T>::set_background();
-        display::draw_image(40, 160, 40, 80, assets::GAME_OVER_IMAGE_DATA.as_ptr());
+        display::draw_image_rotated_flipped(
+            40,
+            160,
+            40,
+            80,
+            assets::GAME_OVER_IMAGE_DATA.as_ptr(),
+            0,     // No rotation (same as GAME_NAME_IMG_DATA)
+            false, // No horizontal flip (same as GAME_NAME_IMG_DATA)
+            true,  // Vertical flip enabled (same as GAME_NAME_IMG_DATA)
+        );
     }
 
     pub fn draw_start_screen() {
         Game::<T>::set_background();
         //display::draw_image(40, 160, 40, 80, assets::GAME_NAME_IMG_DATA.as_ptr());
-        display::draw_image(
+
+        // ═══ ROTATION AND FLIP TEST VALUES ═══
+        // Change these values below and rebuild to test different image orientations:
+
+        // ROTATION: 0=None, 1=Clockwise90, 2=CounterClockwise90, 3=Rotate180
+        const ROTATION: u8 = 0; // ← CHANGE THIS: Try 0, 1, 2, or 3
+
+        // FLIPS: Set to true to enable
+        const FLIP_HORIZONTAL: bool = false; // ← CHANGE THIS: true = mirror left/right
+        const FLIP_VERTICAL: bool = true; // ← CHANGE THIS: true = mirror top/bottom
+
+        display::draw_image_rotated_flipped(
             0,
-            DISPLAY_WIDTH,
+            320, // GAME_NAME_IMG_DATA width
             0,
-            DISPLAY_HEIGHT,
+            240, // GAME_NAME_IMG_DATA height
             assets::GAME_NAME_IMG_DATA.as_ptr(),
+            ROTATION,
+            FLIP_HORIZONTAL,
+            FLIP_VERTICAL,
         );
         let text = c"Game Starts In";
         display::write_string(0, 120, text.as_ptr(), color::RED, color::BACKGROUND);
@@ -142,33 +165,45 @@ impl<T: InputDevice> Game<T> {
         print_score_card_background();
 
         //3. print the plant
-        display::draw_image(
+        display::draw_image_rotated_flipped(
             0,
             60,
             210,
             config::PLANTS_HEIGHT,
             assets::PLANT_IMG_DATA.as_ptr(),
+            0,
+            false,
+            false,
         );
-        display::draw_image(
+        display::draw_image_rotated_flipped(
             60,
             60,
             210,
             config::PLANTS_HEIGHT,
             assets::PLANT_IMG_DATA.as_ptr(),
+            0,
+            false,
+            false,
         );
-        display::draw_image(
+        display::draw_image_rotated_flipped(
             120,
             60,
             210,
             config::PLANTS_HEIGHT,
             assets::PLANT_IMG_DATA.as_ptr(),
+            0,
+            false,
+            false,
         );
-        display::draw_image(
+        display::draw_image_rotated_flipped(
             180,
             60,
             210,
             config::PLANTS_HEIGHT,
             assets::PLANT_IMG_DATA.as_ptr(),
+            0,
+            false,
+            false,
         );
     }
 

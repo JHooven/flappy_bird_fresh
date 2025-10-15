@@ -6,8 +6,8 @@ pub struct LcdDriver {
     ltdc: pac::LTDC,
 }
 
-pub const LCD_WIDTH: u32 = 240;
-pub const LCD_HEIGHT: u32 = 320;
+pub const LCD_WIDTH: u32 = 240; // Physical LCD width
+pub const LCD_HEIGHT: u32 = 320; // Physical LCD height
 
 /*
 Parameter 	Horizontal (DCLKs)	Vertical (Lines)
@@ -23,7 +23,7 @@ const HBP: u32 = 24; // Horizontal back porch
 const HFP: u32 = 16; // Horizontal front porch
 const VSYNC: u32 = 5; // Vertical sync width
 const VBP: u32 = 4; // Vertical back porch
-const VFP: u32 = 4; // Vertical front porch (restored to original)
+const VFP: u32 = 4; // Vertical front porch
 
 // Framebuffer addresses in SDRAM (must match sdram::SDRAM_BASE)
 pub const LAYER1_BASE: u32 = super::sdram::SDRAM_BASE; // Layer1 full screen
