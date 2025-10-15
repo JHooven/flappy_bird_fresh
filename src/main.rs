@@ -14,6 +14,7 @@ mod display;
 mod draw;
 mod game;
 mod i2c;
+mod input_device;
 mod lcd;
 mod lcd_spi;
 mod mpu6050;
@@ -22,11 +23,10 @@ mod player;
 mod sdram;
 
 // Import the types we need
-use config::Coord;
-use game::{Game, InputDevice};
-
+use game::Game;
+use input_device::Mpu6050InputDevice;
 // Dummy input device for now
-struct DummyInputDevice;
+/* struct DummyInputDevice;
 
 impl DummyInputDevice {
     fn new() -> Self {
@@ -47,6 +47,8 @@ impl InputDevice for DummyInputDevice {
     }
 }
 
+*/
+
 #[entry]
 fn main() -> ! {
     let lcd_driver = init();
@@ -60,8 +62,8 @@ fn main() -> ! {
     let test_image: [u16; 4] = [0xF800, 0x07E0, 0x001F, 0xFFFF]; // Red, Green, Blue, White
     display::draw_image_rust(50, 2, 50, 2, &test_image);
 
-    let input: DummyInputDevice = DummyInputDevice::new();
-    let _game_instance: &mut Game<DummyInputDevice> =
+    let input: Mpu6050InputDevice = Mpu6050InputDevice::new();
+    let _game_instance: &mut Game<Mpu6050InputDevice> =
         &mut Game::init(input).expect("Failed to initialize game");
 
     // Minimal test loop - just show checkerboard without game updates
