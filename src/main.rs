@@ -1,88 +1,130 @@
 #![no_std]
 #![no_main]
+#![allow(dead_code)]
 
 use cortex_m_rt::entry;
 use panic_halt as _;
+use stm32f4 as _;
 
-mod sdram;
+mod assets;
 mod clock;
+mod color;
+mod config;
+mod display;
+mod draw;
+mod game;
+mod i2c;
+mod input_device;
 mod lcd;
 mod lcd_spi;
-mod draw;
-mod i2c;
 mod mpu6050;
+mod obstacle;
+mod player;
+mod sdram;
 
+// Import the types we need
+use game::Game;
+use input_device::Mpu6050InputDevice;
+// Dummy input device for now
+/* struct DummyInputDevice;
+
+impl DummyInputDevice {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl InputDevice for DummyInputDevice {
+    type Error = ();
+
+    fn init(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn is_tap(&mut self, _y_min: Coord, _y_max: Coord) -> Result<(Coord, bool), Self::Error> {
+        // For now, never report a tap
+        Ok((0, false))
+    }
+}
+
+*/
 
 #[entry]
 fn main() -> ! {
+    let lcd_driver = init();
+
+    // Re-enable display module - LTDC timing changes may have broken pure LTDC mode
+    display::register_driver(&lcd_driver);
+    display::init(); // Initialize display module
+
+    // Test display functions - draw a simple test image
+    // This will help verify that draw_image is working with LTDC framebuffer
+    let test_image: [u16; 4] = [0xF800, 0x07E0, 0x001F, 0xFFFF]; // Red, Green, Blue, White
+    display::draw_image_rust(50, 2, 50, 2, &test_image);
+
+    let input: Mpu6050InputDevice = Mpu6050InputDevice::new();
+    let _game_instance: &mut Game<Mpu6050InputDevice> =
+        &mut Game::init(input).expect("Failed to initialize game");
+
+    // Minimal test loop - just show checkerboard without game updates
+    loop {
+        _game_instance.update(); // Disable game updates for testing
+                                 // clock::delay_ms(1000); // Very slow for debugging
+    }
+}
+
+fn init() -> lcd::LcdDriver {
     // Configure system clocks to 168MHz from HSE to match C demo
-    clock::setup_system_clocks_168mhz();
+    //clock::setup_system_clocks_168mhz();
     // SysTick and base clocks
     let cp = cortex_m::Peripherals::take().unwrap();
     let _syst = clock::setup(cp.SYST);
 
-    // SDRAM
+    // Setup clocks first before initializing LTDC
+    clock::setup_system_clocks_168mhz();
+    clock::setup_pllsai_for_ltdc();
+
+    // Initialize SDRAM for framebuffers
     sdram::init();
 
-    // Preload frame buffers
-    draw::layer1_checkerboard();
-    draw::layer2_sprite();
+    // Setup LTDC and framebuffers
+    // Layer 1 will be used for everything (start screen, game elements)
+    draw::layer1_checkerboard(); // Initialize with checkerboard as base
 
-    // LTDC pixel clock via PLLSAI and enable LTDC clock
-    clock::setup_pllsai_for_ltdc();
-    // Configure LTDC layers first to provide sync
-    lcd::init_ltdc();
-    // Initialize display panel over SPI
-    lcd_spi::init();
+    // Clear Layer 2 (64x64 layer for small UI elements if needed)
+    draw::clear_layer2();
 
-    // Initialize I2C and MPU6050
+    // Create LCD driver (this will configure LTDC)
+    let lcd_driver = lcd::LcdDriver::new();
+
+    // Initialize SPI display
+    lcd_spi::init(); // Initialize I2C and MPU6050
     i2c::init_i2c1();
-    
-    // Small delay for MPU6050 to stabilize
-    clock::delay_ms(100);
-    
-    let _mpu_init_result = mpu6050::init();
-    
-    // Keep Layer 2 fully opaque
-    lcd::set_layer2_alpha(0xFF);
-    
-    // Tilt-responsive square control
-    let mut square_x: i32 = ((lcd::LCD_WIDTH - lcd::LAYER2_W) / 2) as i32; // Center X
-    let mut square_y: i32 = ((lcd::LCD_HEIGHT - lcd::LAYER2_H) / 2) as i32; // Center Y
-    
-    // Movement parameters  
-    const TILT_SENSITIVITY: i32 = 100; // Higher = more sensitive
-    const MAX_SPEED: i32 = 8; // Maximum pixels per frame
-    
+
+    // Small delay for I2C to stabilize
+    clock::delay_ms(50);
+
+    // Try to initialize MPU6050, with I2C reset on failure
+    let mut mpu_init_attempts = 3;
     loop {
-        // Read MPU6050 data
-        if let Ok(data) = mpu6050::read_data() {
-            // Convert tilt to screen movement
-            // Accelerometer range is ±2g = ±32768 LSB
-            // Map tilt to screen velocity with sensitivity and speed limiting
-            
-            // X-axis: Roll (tilt left/right) -> horizontal movement
-            let vel_x = ((data.accel_y as i32) / TILT_SENSITIVITY).max(-MAX_SPEED).min(MAX_SPEED);
-            
-            // Y-axis: Pitch (tilt forward/backward) -> vertical movement  
-            let vel_y = ((data.accel_x as i32) / TILT_SENSITIVITY).max(-MAX_SPEED).min(MAX_SPEED);
-            
-            // Update square position
-            square_x += vel_x;
-            square_y += vel_y;
-            
-            // Clamp to screen boundaries (allow edge sliding)
-            let max_x = (lcd::LCD_WIDTH - lcd::LAYER2_W) as i32;
-            let max_y = (lcd::LCD_HEIGHT - lcd::LAYER2_H) as i32;
-            
-            square_x = square_x.max(0).min(max_x);
-            square_y = square_y.max(0).min(max_y);
+        let mpu_init_result = mpu6050::init();
+        if mpu_init_result.is_ok() {
+            break;
         }
-        
-        // Update square position on screen
-        lcd::set_layer2_position(square_x as u32, square_y as u32);
-        
-        // Minimal delay for maximum responsiveness
-        clock::delay_ms(1);
+
+        mpu_init_attempts -= 1;
+        if mpu_init_attempts == 0 {
+            // If all attempts fail, continue anyway (MPU6050 is not critical for display)
+            break;
+        }
+
+        // Reset I2C and try again
+        i2c::reset_i2c1();
+        clock::delay_ms(100);
     }
+
+    // Keep Layer 2 fully opaque
+    lcd_driver.set_layer2_alpha(0xFF);
+
+    lcd_driver
 }
