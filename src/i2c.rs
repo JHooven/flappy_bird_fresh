@@ -230,14 +230,59 @@ pub fn i2c1_read_bytes(device_addr: u8, reg_addr: u8, buffer: &mut [u8]) -> Resu
         return Ok(());
     }
 
-    // Wait until bus is free
-    while i2c.sr2.read().busy().bit_is_set() {}
+    // EXPERIMENTAL: Try disabling LTDC during I2C operation to avoid interference
+    // This tests your hypothesis about HSYNC/VSYNC timing affecting I2C bus
+    let ltdc_enabled = dp.LTDC.gcr.read().ltdcen().bit_is_set();
+    if ltdc_enabled {
+        dp.LTDC.gcr.modify(|_, w| w.ltdcen().clear_bit());
+        // Small delay for LTDC to settle
+        for _ in 0..1000 {
+            cortex_m::asm::nop();
+        }
+    }
+
+    // Wait until bus is free with timeout
+    let mut timeout = 10000;
+    while i2c.sr2.read().busy().bit_is_set() {
+        timeout -= 1;
+        if timeout == 0 {
+            // Debug: Check I2C status registers to understand why bus is stuck
+            let _sr1 = i2c.sr1.read().bits();
+            let _sr2 = i2c.sr2.read().bits();
+            // Bus is stuck busy - could be LTDC interference or I2C bus error
+            // Try to reset I2C peripheral
+            i2c.cr1.modify(|_, w| w.pe().clear_bit()); // Disable I2C
+            for _ in 0..1000 {
+                cortex_m::asm::nop();
+            } // Short delay
+            i2c.cr1.modify(|_, w| w.pe().set_bit()); // Re-enable I2C
+                                                     // Re-enable LTDC before returning error
+            if ltdc_enabled {
+                let dp = unsafe { pac::Peripherals::steal() };
+                dp.LTDC.gcr.modify(|_, w| w.ltdcen().set_bit());
+            }
+            return Err(());
+        }
+        cortex_m::asm::nop(); // Prevent tight loop
+    }
 
     // Generate start condition
     i2c.cr1.modify(|_, w| w.start().set_bit());
 
-    // Wait for start condition
-    while !i2c.sr1.read().sb().bit_is_set() {}
+    // Wait for start condition with timeout
+    timeout = 10000;
+    while !i2c.sr1.read().sb().bit_is_set() {
+        timeout -= 1;
+        if timeout == 0 {
+            // Re-enable LTDC before returning error
+            if ltdc_enabled {
+                let dp = unsafe { pac::Peripherals::steal() };
+                dp.LTDC.gcr.modify(|_, w| w.ltdcen().set_bit());
+            }
+            return Err(());
+        }
+        cortex_m::asm::nop();
+    }
 
     // Send device address (write)
     i2c.dr.write(|w| w.dr().bits(device_addr << 1));
@@ -290,6 +335,12 @@ pub fn i2c1_read_bytes(device_addr: u8, reg_addr: u8, buffer: &mut [u8]) -> Resu
 
     // Re-enable ACK for future transfers
     i2c.cr1.modify(|_, w| w.ack().set_bit());
+
+    // EXPERIMENTAL: Re-enable LTDC if it was previously enabled
+    if ltdc_enabled {
+        let dp = unsafe { pac::Peripherals::steal() };
+        dp.LTDC.gcr.modify(|_, w| w.ltdcen().set_bit());
+    }
 
     Ok(())
 }
