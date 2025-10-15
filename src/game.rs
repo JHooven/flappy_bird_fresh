@@ -322,32 +322,31 @@ impl<T: InputDevice> Game<T> {
     fn draw_corner_coordinates() {
         use crate::config::{GAME_HEIGHT, GAME_WIDTH};
 
-        // Draw small colored rectangles and coordinate text in each corner
+        // Draw colored rectangles with text for each corner
 
-        // Top-left corner (0,0) - Test coordinate bounds
+        // Top-left corner (0,0)
         display::draw_rect_angle(0, 60, 0, 20, color::RED);
-        let text_tl = c"(0,0)";
-        display::write_string(5, 5, text_tl.as_ptr(), color::WHITE, color::RED);
+        let test_char_tl = c"TL";
+        display::write_string(5, 5, test_char_tl.as_ptr(), color::WHITE, color::RED);
 
         // Top-right corner (319,0)
         display::draw_rect_angle(GAME_WIDTH as i32 - 70, 70, 0, 20, color::WHITE);
-        let text_tr = c"(319,0)";
+        let test_char_tr = c"TR";
         display::write_string(
-            GAME_WIDTH as i32 - 100,
+            GAME_WIDTH as i32 - 50,
             5,
-            text_tr.as_ptr(),
+            test_char_tr.as_ptr(),
             color::BLACK,
             color::WHITE,
         );
 
         // Bottom-left corner (0,239)
-
-        display::draw_rect_angle(0, 70, GAME_HEIGHT as i32 - 20, 20, color::BLACK);
-        let text_bl = c"(0,239)";
+        display::draw_rect_angle(0, 70, GAME_HEIGHT as i32 - 30, 20, color::BLACK);
+        let test_char_bl = c"BL";
         display::write_string(
             5,
-            GAME_HEIGHT as i32 - 15,
-            text_bl.as_ptr(),
+            GAME_HEIGHT as i32 - 30,
+            test_char_bl.as_ptr(),
             color::WHITE,
             color::BLACK,
         );
@@ -356,16 +355,16 @@ impl<T: InputDevice> Game<T> {
         display::draw_rect_angle(
             GAME_WIDTH as i32 - 80,
             80,
-            GAME_HEIGHT as i32 - 20,
+            GAME_HEIGHT as i32 - 30,
             20,
-            color::SCORE,
+            color::BLACK,
         );
-        let text_br = c"(319,239)";
+        let test_char_br = c"BR";
         display::write_string(
-            GAME_WIDTH as i32 - 75,
-            GAME_HEIGHT as i32 - 15,
-            text_br.as_ptr(),
-            color::WHITE,
+            GAME_WIDTH as i32 - 50,
+            GAME_HEIGHT as i32 - 30,
+            test_char_br.as_ptr(),
+            color::BLACK,
             color::SCORE,
         );
     }

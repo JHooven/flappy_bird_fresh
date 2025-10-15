@@ -130,8 +130,10 @@ const MADCTL_MX: u8 = 0x40; // Right to left
 const MADCTL_MV: u8 = 0x20; // Reverse Mode
 const MADCTL_BGR: u8 = 0x08; // Blue-Green-Red pixel order
 
-// Default font definition using actual font data
-pub static FONT_11X18: crate::assets::fonts::Font = crate::assets::fonts::Font7x10;
+// Font definitions using actual font data
+pub static FONT_7X10: crate::assets::fonts::Font = crate::assets::fonts::Font7x10;
+pub static FONT_11X18: crate::assets::fonts::Font = crate::assets::fonts::Font11x18;
+pub static FONT_16X26: crate::assets::fonts::Font = crate::assets::fonts::Font16x26;
 
 pub struct Display {
     lcd_driver: LcdDriver,
@@ -490,10 +492,10 @@ impl Display {
         if let Ok(rust_str) = c_str.to_str() {
             for ch in rust_str.chars() {
                 // Handle line wrapping using game coordinates
-                if x + FONT_11X18.width as u16 >= GAME_WIDTH as u16 {
+                if x + FONT_16X26.width as u16 >= GAME_WIDTH as u16 {
                     x = 0;
-                    y += FONT_11X18.height as u16;
-                    if y + FONT_11X18.height as u16 >= GAME_HEIGHT as u16 {
+                    y += FONT_16X26.height as u16;
+                    if y + FONT_16X26.height as u16 >= GAME_HEIGHT as u16 {
                         break;
                     }
 
@@ -502,8 +504,8 @@ impl Display {
                     }
                 }
 
-                self.write_char(x, y, ch as u8, FONT_11X18, color, bgcolor);
-                x += FONT_11X18.width as u16;
+                self.write_char(x, y, ch as u8, FONT_16X26, color, bgcolor);
+                x += FONT_16X26.width as u16;
             }
         }
     }
@@ -535,15 +537,11 @@ impl Display {
             let char_index = (ch - 32) as usize; // ASCII printable characters start at 32
             let row_index = char_index * font.height as usize + i as usize;
 
-            let b = if row_index < font.data.len() {
+            let b = if ch >= 32 && ch <= 126 && row_index < font.data.len() {
                 font.data[row_index]
             } else {
-                // Fallback pattern if index is out of bounds
-                if i < font.height / 2 {
-                    0xFF00
-                } else {
-                    0x00FF
-                }
+                // Fallback: draw a solid block for any character issues
+                0xFFFF // All bits set = solid block
             };
 
             for j in 0..font.width {
@@ -565,8 +563,8 @@ impl Display {
                     continue;
                 }
 
-                // Check if this pixel should be drawn (bit test from MSB, left to right)
-                let bit_position = 15 - j; // For 16-bit font: bit 15 = leftmost, bit 0 = rightmost
+                // Check if this pixel should be drawn (bit test from LSB, left to right)
+                let bit_position = j; // For 16-bit font: bit 0 = leftmost, bit 15 = rightmost
                 let pixel_color = if (b & (1 << bit_position)) != 0 {
                     color
                 } else {
