@@ -490,7 +490,22 @@ impl Display {
         let mut y: u16 = y.try_into().expect("y co-ordinate is out of range");
 
         if let Ok(rust_str) = c_str.to_str() {
-            for ch in rust_str.chars() {
+            // Render characters in reverse order to account for coordinate transformation
+            let mut chars = [0u8; 32]; // Buffer to hold characters
+            let mut char_count = 0;
+
+            // Collect characters into buffer
+            for (i, ch) in rust_str.chars().enumerate() {
+                if i < chars.len() {
+                    chars[i] = ch as u8;
+                    char_count = i + 1;
+                }
+            }
+
+            // Render characters in reverse order
+            for i in (0..char_count).rev() {
+                let ch = chars[i];
+
                 // Handle line wrapping using game coordinates
                 if x + FONT_16X26.width as u16 >= GAME_WIDTH as u16 {
                     x = 0;
@@ -499,12 +514,12 @@ impl Display {
                         break;
                     }
 
-                    if ch == ' ' {
+                    if ch == b' ' {
                         continue; // Skip spaces at beginning of new line
                     }
                 }
 
-                self.write_char(x, y, ch as u8, FONT_16X26, color, bgcolor);
+                self.write_char(x, y, ch, FONT_16X26, color, bgcolor);
                 x += FONT_16X26.width as u16;
             }
         }
