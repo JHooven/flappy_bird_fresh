@@ -13,22 +13,38 @@
         "interface/stlink.cfg",
         "target/stm32f4x.cfg"
       ],
-      "serverArgs": ["-c", "adapter speed 4000"],
+      "serverArgs": [
+        "-c",
+        "adapter speed 4000",
+        "-c",
+        "transport select hla_swd"
+      ],
       "preLaunchTask": "openocd: erase + flash binary (flappy_bird_fresh)",
       "gdbPath": "arm-none-eabi-gdb",
       "preLaunchCommands": [
-        "set mem inaccessible-by-default off",
-        "set remotetimeout 60"
+        "monitor halt",
+        //      "monitor flash erase_sector 0 0 last",
+        "monitor reset halt"
       ],
       "postLaunchCommands": [
         "monitor reset halt",
         "load"
-      ]
+      ],
+      "rttConfig": {
+        "enabled": true,
+        "decoders": [
+          {
+            "label": "RTT Channel 0",
+            "type": "console",
+            "port": 0
+          }
+        ]
+      }
     },
     {
       "name": "OpenOCD: Debug Only (no flash)",
       "type": "cortex-debug",
-      "request": "launch", 
+      "request": "launch",
       "cwd": "${workspaceFolder}",
       "executable": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/flappy_bird_fresh",
       "servertype": "openocd",
@@ -36,7 +52,10 @@
         "interface/stlink.cfg",
         "target/stm32f4x.cfg"
       ],
-      "serverArgs": ["-c", "adapter speed 4000"],
+      "serverArgs": [
+        "-c",
+        "adapter speed 4000"
+      ],
       "preLaunchTask": "build: debug (flappy_bird_fresh)",
       "gdbPath": "arm-none-eabi-gdb",
       "preLaunchCommands": [

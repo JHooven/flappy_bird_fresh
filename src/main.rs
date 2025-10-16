@@ -25,6 +25,7 @@ mod sdram;
 // Import the types we need
 use game::Game;
 use input_device::Mpu6050InputDevice;
+use rtt_target::{rprintln, rtt_init_print};
 // Dummy input device for now
 /* struct DummyInputDevice;
 
@@ -53,6 +54,8 @@ impl InputDevice for DummyInputDevice {
 fn main() -> ! {
     let lcd_driver = init();
 
+    rtt_init_print!();
+    rprintln!("System initialized");
     // Re-enable display module - LTDC timing changes may have broken pure LTDC mode
     display::register_driver(&lcd_driver);
     display::init(); // Initialize display module
