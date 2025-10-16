@@ -10,6 +10,7 @@ use crate::config::{self, Coord};
 use crate::display;
 use crate::display::DISPLAY_HEIGHT;
 use crate::display::DISPLAY_WIDTH;
+use crate::display::ROTATION_180;
 use crate::obstacle;
 use crate::player;
 
@@ -123,9 +124,9 @@ impl<T: InputDevice> Game<T> {
             40,
             80,
             assets::GAME_OVER_IMAGE_DATA.as_ptr(),
-            0,     // No rotation (same as GAME_NAME_IMG_DATA)
-            false, // No horizontal flip (same as GAME_NAME_IMG_DATA)
-            true,  // Vertical flip enabled (same as GAME_NAME_IMG_DATA)
+            0,     // No rotation
+            true,  //horizontal flip
+            false, //no vertical flip
         );
     }
 
@@ -137,7 +138,7 @@ impl<T: InputDevice> Game<T> {
         // Change these values below and rebuild to test different image orientations:
 
         // ROTATION: 0=None, 1=Clockwise90, 2=CounterClockwise90, 3=Rotate180
-        const ROTATION: u8 = 0; // ← CHANGE THIS: Try 0, 1, 2, or 3
+        const ROTATION: u8 = ROTATION_180; // ← CHANGE THIS: Try 0, 1, 2, or 3
 
         // FLIPS: Set to true to enable
         const FLIP_HORIZONTAL: bool = false; // ← CHANGE THIS: true = mirror left/right
@@ -155,7 +156,7 @@ impl<T: InputDevice> Game<T> {
         );
 
         // Corner coordinates test - now ready to debug separately
-        Game::<T>::draw_corner_coordinates();
+        // Game::<T>::draw_corner_coordinates();
 
         let text = c"Game Starts In";
         display::write_string(0, 120, text.as_ptr(), color::RED, color::BACKGROUND);
